@@ -2,6 +2,19 @@
 inkbox — Python SDK for the Inkbox APIs.
 """
 
+from inkbox.slack import (
+    SlackResource,
+    SlackConnection,
+    SlackConnectionsResponse,
+    SlackInvitation,
+    SlackAction,
+    SlackConversationsResponse,
+    SlackMessagesResponse,
+    SlackFile,
+    SlackWebhookFilter,
+    SlackMessageKind,
+)
+from inkbox.webhooks import SlackWebhookEventType, SlackWebhookData, SlackWebhookPayload
 from inkbox.client import Inkbox
 from inkbox.message_sends import get_message_request_key as get_message_request_key
 from inkbox.sender_access import SenderAccess
@@ -457,6 +470,22 @@ __all__ = [
     "ResponseNotice",
     "ResponseObserver",
     "ContactRuleDirection",
+
+    # Slack
+    "SlackResource",
+    "SlackConnection",
+    "SlackConnectionsResponse",
+    "SlackInvitation",
+    "SlackAction",
+    "SlackConversationsResponse",
+    "SlackMessagesResponse",
+    "SlackFile",
+    "SlackWebhookFilter",
+    "SlackMessageKind",
+    "SlackWebhookEventType",
+    "SlackWebhookData",
+    "SlackWebhookPayload",
+
     # A2A
     "A2ACard",
     "A2ACaller",

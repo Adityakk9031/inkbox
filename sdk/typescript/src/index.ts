@@ -469,3 +469,12 @@ export * from "./companion.js";
 
 export type { SenderAccess } from "./sender_access.js";
 export { MessageSendsResource, getMessageRequestKey, type MessageSendLookupOptions } from "./message_sends.js";
+
+
+export { SlackResource } from "./slack.js";
+export type {
+  SlackMessageKind, SlackWebhookFilter, RawSlackWebhookFilter, SlackConnection,
+  SlackConnectionsResponse, SlackInvitation, SlackAction, SlackConversationsResponse,
+  SlackMessagesResponse, SlackFile, SlackSendMessageOptions, SlackPageOptions, SlackMessagesOptions,
+} from "./slack.js";
+export type { SlackWebhookEventType, SlackWebhookData, SlackWebhookPayload } from "./webhooks/types.js";
