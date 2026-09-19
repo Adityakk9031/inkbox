@@ -645,3 +645,7 @@ bounded imports, and coverage are separate from live reads. Retention has no tim
 limit by default; organization management can disable capture, restrict it, set a
 retention limit, or purge. Workspace approval, connection ownership,
 and current conversation access remain required.
+
+## License
+
+MIT
