@@ -1477,7 +1477,7 @@ An unavailable result does not mean the original message was never sent.
 
 ## Slack
 
-See the [Slack API and onboarding guide](../../sdk/typescript/README.md#slack) for implemented SDK/CLI methods.
+See the [Slack API and onboarding guide](https://github.com/inkbox-ai/inkbox/blob/main/sdk/typescript/README.md#slack) for implemented SDK/CLI methods.
 Use an existing identity and select the intended connected workspace explicitly.
 Installation availability reports readiness, not organization-management permission.
 Organization management can create an invitation or start an installation. Open the
