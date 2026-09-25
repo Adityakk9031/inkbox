@@ -590,7 +590,7 @@ catalog once per list call and fails clearly when unsupported; omitted scope add
 no request. The mixed-event examples below assume the capability is available.
 
 Subscriptions belong to an identity and can combine mail, text, iMessage,
-call-lifecycle and A2A notifications, even before channels are configured.
+call-lifecycle, A2A, and Slack notifications, even before channels are configured.
 Existing list calls keep their single-family views. Explicitly pass
 `scope="identity"` (Python), `scope: "identity"` (TypeScript), or use Rust's
 `list_with_scope` to include every family and mixed subscription. The CLI supports
@@ -628,10 +628,6 @@ See [message send retries](https://inkbox.ai/docs/api/message-sends).
 
 Read an iMessage by ID with `imessages.get(...)`, Rust's `imessages().get(...)`,
 or `inkbox imessage get <message-id> --identity <handle>`.
-
-## License
-
-MIT
 
 ## Slack workspace connections
 
