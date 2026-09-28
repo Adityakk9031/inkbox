@@ -387,6 +387,7 @@ export function registerIdentityCommands(program: Command): void {
             phoneCountry: id.phoneNumber?.country ?? null,
             phoneState: id.phoneNumber?.state ?? null,
             imessageEnabled: id.imessageEnabled,
+            slackEnabled: id.slackEnabled,
             contactSharingEnabled: id.contactSharingEnabled,
             imessageFilterMode: id.imessageFilterMode,
             mailFilterMode: id.mailFilterMode,
@@ -426,6 +427,7 @@ export function registerIdentityCommands(program: Command): void {
       "--description <text>",
       "Free-form org-internal description (never surfaces in outbound mail).",
     )
+    .option("--slack-enabled", "Enable Slack for this identity")
     .option(
       "--imessage-enabled",
       "Enable iMessage reachability for this identity.",
@@ -460,6 +462,7 @@ export function registerIdentityCommands(program: Command): void {
           displayName?: string;
           description?: string;
           imessageEnabled?: boolean;
+          slackEnabled?: boolean;
           contactSharingEnabled?: string;
           emailLocalPart?: string;
           sendingDomain?: string;
@@ -482,6 +485,7 @@ export function registerIdentityCommands(program: Command): void {
           displayName?: string;
           description?: string | null;
           imessageEnabled?: boolean;
+          slackEnabled?: boolean;
           contactSharingEnabled?: boolean;
           emailLocalPart?: string;
           sendingDomain?: string | null;
@@ -490,6 +494,7 @@ export function registerIdentityCommands(program: Command): void {
         if (cmdOpts.displayName !== undefined) createOpts.displayName = cmdOpts.displayName;
         if (cmdOpts.description !== undefined) createOpts.description = cmdOpts.description;
         if (cmdOpts.imessageEnabled) createOpts.imessageEnabled = true;
+        if (cmdOpts.slackEnabled) createOpts.slackEnabled = true;
         if (cmdOpts.contactSharingEnabled !== undefined) {
           createOpts.contactSharingEnabled = cmdOpts.contactSharingEnabled === "true";
         }
@@ -511,6 +516,7 @@ export function registerIdentityCommands(program: Command): void {
             description: id.description,
             mailbox: id.mailbox?.emailAddress ?? null,
             imessageEnabled: id.imessageEnabled,
+            slackEnabled: id.slackEnabled,
             contactSharingEnabled: id.contactSharingEnabled,
             tunnel: id.tunnel
               ? {
@@ -552,6 +558,7 @@ export function registerIdentityCommands(program: Command): void {
     .option("--description <text>", "New description (pass '' to clear)")
     .option("--clear-description", "Explicitly clear the description (sends null)", false)
     .option("--imessage-enabled <bool>", "Toggle identity-level iMessage reachability: true or false")
+    .option("--slack-enabled <bool>", "Enable or pause Slack: true or false")
     .option("--contact-sharing-enabled <bool>", "Toggle automatic name and optional photo sharing on a dedicated iMessage line: true or false")
     .option("--imessage-filter-mode <mode>", "Alias for the shared phone and iMessage contact-rule mode (admin API key required)")
     .option("--mail-filter-mode <mode>", "Mail contact-rule mode: whitelist or blacklist (admin-only)")
@@ -570,6 +577,7 @@ export function registerIdentityCommands(program: Command): void {
           description?: string;
           clearDescription?: boolean;
           imessageEnabled?: string;
+          slackEnabled?: string;
           contactSharingEnabled?: string;
           imessageFilterMode?: string;
           mailFilterMode?: string;
@@ -582,6 +590,9 @@ export function registerIdentityCommands(program: Command): void {
       ) {
         if (cmdOpts.description !== undefined && cmdOpts.clearDescription) {
           throw new Error("--description and --clear-description are mutually exclusive");
+        }
+        if (cmdOpts.slackEnabled !== undefined && cmdOpts.slackEnabled !== "true" && cmdOpts.slackEnabled !== "false") {
+          throw new Error("--slack-enabled must be 'true' or 'false'");
         }
         if (cmdOpts.imessageEnabled !== undefined && cmdOpts.imessageEnabled !== "true" && cmdOpts.imessageEnabled !== "false") {
           throw new Error("--imessage-enabled must be 'true' or 'false'");
@@ -620,6 +631,7 @@ export function registerIdentityCommands(program: Command): void {
           displayName?: string | null;
           description?: string | null;
           imessageEnabled?: boolean;
+          slackEnabled?: boolean;
           contactSharingEnabled?: boolean;
           imessageFilterMode?: "whitelist" | "blacklist";
           mailFilterMode?: "whitelist" | "blacklist";
@@ -636,6 +648,9 @@ export function registerIdentityCommands(program: Command): void {
           updateOpts.description = cmdOpts.description === "" ? null : cmdOpts.description;
         } else if (cmdOpts.clearDescription) {
           updateOpts.description = null;
+        }
+        if (cmdOpts.slackEnabled !== undefined) {
+          updateOpts.slackEnabled = cmdOpts.slackEnabled === "true";
         }
         if (cmdOpts.imessageEnabled !== undefined) {
           updateOpts.imessageEnabled = cmdOpts.imessageEnabled === "true";
@@ -677,6 +692,7 @@ export function registerIdentityCommands(program: Command): void {
             phoneCountry: id.phoneNumber?.country ?? null,
             phoneState: id.phoneNumber?.state ?? null,
             imessageEnabled: id.imessageEnabled,
+            slackEnabled: id.slackEnabled,
             contactSharingEnabled: id.contactSharingEnabled,
             imessageFilterMode: id.imessageFilterMode,
             mailFilterMode: id.mailFilterMode,

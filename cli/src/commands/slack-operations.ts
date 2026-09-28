@@ -1,6 +1,6 @@
 import { createReadStream } from "node:fs";
 import { basename } from "node:path";
-import { Command, InvalidArgumentError } from "commander";
+import { Command, InvalidArgumentError, Option } from "commander";
 import type { SlackProcessingStatus, SlackResource } from "@inkbox/sdk";
 import { createClient, getGlobalOpts } from "../client.js";
 import { output } from "../output.js";
@@ -24,7 +24,7 @@ interface Args {
   initialComment?: string;
   limit?: number;
   cursor?: string;
-  captureEnabled: boolean;
+  captureEnabled?: boolean;
   retentionDays?: number | "null";
   captureConversationId?: string[];
   beforeTs?: string;
@@ -244,7 +244,7 @@ export function registerSlackOperationCommands(
   const archive = slack
     .command("archive")
     .description(
-      "Retained history; default-on observed-message capture, bounded imports, and coverage",
+      "Retained history; automatic observed-message capture, bounded imports, and coverage",
     );
   const settings = archive.command("settings");
   action(connection(settings.command("get")), (s, o) =>
@@ -255,20 +255,23 @@ export function registerSlackOperationCommands(
       settings
         .command("update")
         .description(
-          "Organization management: replace all capture settings; omitted values reset",
+          "Organization management: set retention; messages are captured automatically",
         ),
     )
-      .requiredOption("--capture-enabled <boolean>", "true or false", boolean)
+      .addOption(
+        new Option("--capture-enabled <boolean>", "Deprecated; only true is accepted")
+          .argParser(boolean)
+          .hideHelp(),
+      )
       .option(
         "--retention-days <days|null>",
         "Retention limit; null or omission resets to no time limit",
         (v) => (v === "null" ? "null" : slackInteger(v)),
       )
-      .option(
-        "--capture-conversation-id <id>",
-        "Capture only these conversations (repeatable); omission resets to all",
-        (v: string, previous: string[]) => [...previous, v],
-        [] as string[],
+      .addOption(
+        new Option("--capture-conversation-id <id>", "Deprecated; capture cannot be filtered")
+          .argParser((v: string, previous: string[] = []) => [...previous, v])
+          .hideHelp(),
       ),
     (s, o) =>
       s.updateArchiveSettings(o.connectionId, {
@@ -309,7 +312,7 @@ export function registerSlackOperationCommands(
       archive
         .command("purge")
         .description(
-          "Organization management: disable capture and queue retained-content deletion",
+          "Organization management: delete retained history without stopping new capture",
         ),
     ),
     (s, o) => s.purgeArchive(o.connectionId),

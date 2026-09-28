@@ -466,9 +466,7 @@
       "response": {
         "capture_enabled": true,
         "retention_days": null,
-        "conversation_ids": [
-          "C123"
-        ],
+        "conversation_ids": [],
         "revision": 2
       },
       "body": null,
@@ -482,17 +480,13 @@
       "response": {
         "capture_enabled": true,
         "retention_days": null,
-        "conversation_ids": [
-          "C123"
-        ],
+        "conversation_ids": [],
         "revision": 2
       },
       "body": {
         "capture_enabled": true,
         "retention_days": null,
-        "conversation_ids": [
-          "C123"
-        ]
+        "conversation_ids": []
       },
       "query": {},
       "idempotency_key": null
@@ -624,7 +618,7 @@
       "path": "/slack/connections/11111111-1111-4111-8111-111111111111/archive",
       "response": {
         "status": "pending",
-        "capture_enabled": false
+        "capture_enabled": true
       },
       "body": null,
       "query": {},
@@ -705,7 +699,7 @@
       },
       "body": null,
       "query": {
-        "q": "release + café & notes?",
+        "q": "release + caf\u00e9 & notes?",
         "limit": "50"
       },
       "idempotency_key": null

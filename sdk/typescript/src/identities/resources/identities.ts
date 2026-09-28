@@ -59,6 +59,7 @@ export class IdentitiesResource {
     displayName?: string;
     description?: string | null;
     imessageEnabled?: boolean;
+    slackEnabled?: boolean;
     contactSharingEnabled?: boolean;
     claimIMessageNumber?: true;
     mailbox?: IdentityMailboxCreateOptions;
@@ -75,6 +76,10 @@ export class IdentitiesResource {
     const body: Record<string, unknown> = { agent_handle: options.agentHandle };
     if (options.displayName !== undefined) body["display_name"] = options.displayName;
     if (options.description !== undefined) body["description"] = options.description;
+    if (options.slackEnabled !== undefined) {
+      if (typeof options.slackEnabled !== "boolean") throw new Error("slackEnabled must be a boolean");
+      body["slack_enabled"] = options.slackEnabled;
+    }
     if (options.imessageEnabled !== undefined) body["imessage_enabled"] = options.imessageEnabled;
     if (options.contactSharingEnabled !== undefined) body["contact_sharing_enabled"] = options.contactSharingEnabled;
     if (options.claimIMessageNumber === true) {
@@ -169,6 +174,10 @@ export class IdentitiesResource {
     if (options.newHandle !== undefined) body["agent_handle"] = options.newHandle;
     if (options.displayName !== undefined) body["display_name"] = options.displayName;
     if (options.description !== undefined) body["description"] = options.description;
+    if (options.slackEnabled !== undefined) {
+      if (typeof options.slackEnabled !== "boolean") throw new Error("slackEnabled must be a boolean");
+      body["slack_enabled"] = options.slackEnabled;
+    }
     if (options.imessageEnabled !== undefined) body["imessage_enabled"] = options.imessageEnabled;
     if (options.contactSharingEnabled !== undefined) body["contact_sharing_enabled"] = options.contactSharingEnabled;
     if ("imessageNumberId" in options) body["imessage_number_id"] = options.imessageNumberId;

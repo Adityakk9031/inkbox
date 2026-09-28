@@ -116,11 +116,22 @@ pub struct SlackArchiveSettings {
     pub conversation_ids: Vec<String>,
     pub revision: u32,
 }
-#[derive(Debug, Clone, Default, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct SlackArchiveSettingsOptions {
+    /// Compatibility field. Capture is automatic; only true is accepted.
     pub capture_enabled: bool,
     pub retention_days: Option<u32>,
+    /// Compatibility field. All accessible conversations are captured; must be empty.
     pub conversation_ids: Vec<String>,
+}
+impl Default for SlackArchiveSettingsOptions {
+    fn default() -> Self {
+        Self {
+            capture_enabled: true,
+            retention_days: None,
+            conversation_ids: Vec::new(),
+        }
+    }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -500,14 +511,24 @@ impl SlackResource {
             NO_QUERY,
         )?)?)
     }
-    /// Organization management only; replaces all capture settings.
-    /// None retention resets to no time limit; empty conversation IDs reset to all.
-    /// Read current settings and restate values to preserve them.
+    /// Organization management only; set message retention.
+    /// None resets to no time limit. Capture remains automatic for all accessible
+    /// observed messages, independently of webhook filters.
     pub fn update_archive_settings(
         &self,
         id: Uuid,
         options: &SlackArchiveSettingsOptions,
     ) -> Result<SlackArchiveSettings> {
+        if !options.capture_enabled {
+            return Err(InkboxError::InvalidArgument(
+                "Slack message capture is always enabled".into(),
+            ));
+        }
+        if !options.conversation_ids.is_empty() {
+            return Err(InkboxError::InvalidArgument(
+                "Slack message capture includes all accessible conversations".into(),
+            ));
+        }
         Ok(serde_json::from_value(self.http.patch(
             &format!("{}/archive/settings", base(id)),
             options,
@@ -617,7 +638,7 @@ impl SlackResource {
             &page(options, 100),
         )?)?)
     }
-    /// Organization management only; disables capture and queues retained-content deletion.
+    /// Organization management only; delete retained history without stopping new capture.
     pub fn purge_archive(&self, id: Uuid) -> Result<SlackArchivePurgeResponse> {
         Ok(serde_json::from_value(
             self.http

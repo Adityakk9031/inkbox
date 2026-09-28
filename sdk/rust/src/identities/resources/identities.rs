@@ -15,8 +15,9 @@ use crate::error::Result;
 use crate::http::{validate_idempotency_key, HttpTransport};
 use crate::identities::exceptions::map_identity_conflict_error;
 use crate::identities::types::{
-    AgentIdentityData, AgentIdentitySummary, IdentityMailboxCreateOptions,
-    IdentityPhoneNumberCreateOptions, IdentityTunnelCreateOptions, Unset, VaultSecretIds,
+    AgentIdentityData, AgentIdentitySummary, ChannelAgentIdentityData,
+    IdentityMailboxCreateOptions, IdentityPhoneNumberCreateOptions, IdentityTunnelCreateOptions,
+    Unset, VaultSecretIds,
 };
 use uuid::Uuid;
 
@@ -148,6 +149,39 @@ impl IdentitiesResource {
         vault_secret_ids: Option<&VaultSecretIds>,
         claim_imessage_number: Option<bool>,
     ) -> Result<AgentIdentityData> {
+        self.create_with_channels(
+            agent_handle,
+            display_name,
+            description,
+            imessage_enabled,
+            contact_sharing_enabled,
+            mailbox,
+            tunnel,
+            phone_number,
+            vault_secret_ids,
+            claim_imessage_number,
+            None,
+        )
+        .map(ChannelAgentIdentityData::into_legacy)
+    }
+
+    /// Configure identity profile and channels, including Slack enablement.
+    /// Slack defaults to disabled on create; omitted updates preserve its state.
+    #[allow(clippy::too_many_arguments)]
+    pub fn create_with_channels(
+        &self,
+        agent_handle: &str,
+        display_name: Option<&str>,
+        description: Unset<String>,
+        imessage_enabled: Option<bool>,
+        contact_sharing_enabled: Option<bool>,
+        mailbox: Option<&IdentityMailboxCreateOptions>,
+        tunnel: Option<&IdentityTunnelCreateOptions>,
+        phone_number: Option<&IdentityPhoneNumberCreateOptions>,
+        vault_secret_ids: Option<&VaultSecretIds>,
+        claim_imessage_number: Option<bool>,
+        slack_enabled: Option<bool>,
+    ) -> Result<ChannelAgentIdentityData> {
         if claim_imessage_number == Some(false) {
             return Err(crate::error::InkboxError::InvalidArgument(
                 "claim_imessage_number only accepts true when supplied".into(),
@@ -201,13 +235,16 @@ impl IdentitiesResource {
             body.insert("vault_secret_ids".into(), ids.to_wire());
         }
 
+        if let Some(flag) = slack_enabled {
+            body.insert("slack_enabled".into(), Value::Bool(flag));
+        }
         let body = Value::Object(body);
         let data = self
             .http
             .post("/", Some(&body), crate::http::NO_QUERY)
             // Map a 409 handle collision to the typed view (see exceptions.rs).
             .map_err(map_identity_conflict_error)?;
-        AgentIdentityData::from_value(data)
+        ChannelAgentIdentityData::from_value(data)
     }
 
     /// List identities visible to this credential.
@@ -229,6 +266,23 @@ impl IdentitiesResource {
             .http
             .get(&format!("/{agent_handle}"), crate::http::NO_QUERY)?;
         AgentIdentityData::from_value(data)
+    }
+
+    /// Get an identity including channel settings such as Slack enablement.
+    pub fn get_with_channels(&self, agent_handle: &str) -> Result<ChannelAgentIdentityData> {
+        ChannelAgentIdentityData::from_value(
+            self.http
+                .get(&format!("/{agent_handle}"), crate::http::NO_QUERY)?,
+        )
+    }
+
+    /// List identities including channel settings without changing legacy summaries.
+    pub fn list_with_channels(&self) -> Result<Vec<ChannelAgentIdentityData>> {
+        let items: Vec<Value> = serde_json::from_value(self.http.get("/", crate::http::NO_QUERY)?)?;
+        items
+            .into_iter()
+            .map(ChannelAgentIdentityData::from_value)
+            .collect()
     }
 
     /// Toggle automatic name and optional photo sharing for an attached
@@ -349,6 +403,43 @@ impl IdentitiesResource {
         claim_imessage_number: Option<bool>,
         idempotency_key: Option<&str>,
     ) -> Result<AgentIdentityData> {
+        self.update_with_channels(
+            agent_handle,
+            new_handle,
+            display_name,
+            description,
+            imessage_enabled,
+            contact_sharing_enabled,
+            imessage_filter_mode,
+            mail_filter_mode,
+            phone_filter_mode,
+            imessage_number_id,
+            claim_imessage_number,
+            idempotency_key,
+            None,
+        )
+        .map(ChannelAgentIdentityData::into_legacy)
+    }
+
+    /// Configure identity profile and channels, including Slack enablement.
+    /// Slack defaults to disabled on create; omitted updates preserve its state.
+    #[allow(clippy::too_many_arguments)]
+    pub fn update_with_channels(
+        &self,
+        agent_handle: &str,
+        new_handle: Option<&str>,
+        display_name: Unset<String>,
+        description: Unset<String>,
+        imessage_enabled: Option<bool>,
+        contact_sharing_enabled: Option<bool>,
+        imessage_filter_mode: Option<&str>,
+        mail_filter_mode: Option<&str>,
+        phone_filter_mode: Option<&str>,
+        imessage_number_id: Unset<Uuid>,
+        claim_imessage_number: Option<bool>,
+        idempotency_key: Option<&str>,
+        slack_enabled: Option<bool>,
+    ) -> Result<ChannelAgentIdentityData> {
         if claim_imessage_number == Some(false) {
             return Err(crate::error::InkboxError::InvalidArgument(
                 "claim_imessage_number only accepts true when supplied".into(),
@@ -428,6 +519,9 @@ impl IdentitiesResource {
         if let Some(mode) = phone_filter_mode {
             body.insert("phone_filter_mode".into(), Value::String(mode.to_string()));
         }
+        if let Some(flag) = slack_enabled {
+            body.insert("slack_enabled".into(), Value::Bool(flag));
+        }
         let body = Value::Object(body);
         let path = format!("/{agent_handle}");
         let response = match idempotency_key {
@@ -438,7 +532,7 @@ impl IdentitiesResource {
             None => self.http.patch(&path, &body),
         };
         let data = response.map_err(map_identity_conflict_error)?;
-        AgentIdentityData::from_value(data)
+        ChannelAgentIdentityData::from_value(data)
     }
 
     /// Delete an identity.

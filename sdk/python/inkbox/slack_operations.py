@@ -479,15 +479,20 @@ class SlackOperationsMixin:
         self,
         connection_id: UUID | str,
         *,
-        capture_enabled: bool,
+        capture_enabled: bool = True,
         retention_days: int | None = None,
         conversation_ids: list[str] | None = None,
     ) -> SlackArchiveSettings:
-        """Organization management only; replaces all capture settings.
+        """Organization management only; set message retention.
 
-        Omitted retention resets to no time limit. Omitted or empty conversation_ids
-        resets to all conversations. Read current settings and restate values to preserve them.
+        Omitted retention resets to no time limit. All accessible observed messages
+        are captured automatically. Legacy capture arguments only accept True and
+        an omitted or empty conversation list.
         """
+        if capture_enabled is not True:
+            raise ValueError("Slack message capture is always enabled")
+        if conversation_ids:
+            raise ValueError("Slack message capture includes all accessible conversations")
         return _parse(
             SlackArchiveSettings,
             self._http.patch(
@@ -625,7 +630,7 @@ class SlackOperationsMixin:
         return _parse(SlackArchiveCoverageResponse, raw)
 
     def purge_archive(self, connection_id: UUID | str) -> SlackArchivePurgeResponse:
-        """Organization management only; disables capture and queues retained-content deletion."""
+        """Organization management only; delete retained history without stopping new capture."""
         return _parse(
             SlackArchivePurgeResponse,
             self._http.delete_with_response(f"{_base(connection_id)}/archive"),

@@ -73,7 +73,7 @@ def calls(s):
         ),
         "get_archive_settings": lambda: s.get_archive_settings(C),
         "update_archive_settings": lambda: s.update_archive_settings(
-            C, capture_enabled=True, retention_days=None, conversation_ids=["C123"]
+            C, retention_days=None
         ),
         "list_archived_messages": lambda: s.list_archived_messages(
             C,
@@ -159,7 +159,7 @@ def test_all_operations_exact_wire_and_typed_results(wire, case):
         assert all(m.captured_at.tzinfo is not None for m in result.messages)
     if case["name"] == "purge_archive":
         assert isinstance(result, SlackArchivePurgeResponse)
-        assert result.status == "pending" and result.capture_enabled is False
+        assert result.status == "pending" and result.capture_enabled is True
     if case["name"] == "capabilities":
         assert not result.capabilities["files_upload"].scopes_satisfied
 
@@ -173,6 +173,27 @@ def test_every_mutation_preserves_errors_without_retry(wire, name):
     with pytest.raises(InkboxAPIError):
         calls(client.slack)[name]()
     assert len(requests) == 1
+
+
+@pytest.mark.parametrize("options", [{}, {"capture_enabled": True, "conversation_ids": []}])
+def test_retention_update_preserves_automatic_capture(wire, options):
+    client, requests, replies = wire
+    replies.append({
+        "capture_enabled": True, "conversation_ids": [], "retention_days": 90, "revision": 3,
+    })
+    result = client.slack.update_archive_settings(C, retention_days=90, **options)
+    assert result.capture_enabled and result.retention_days == 90
+    assert json.loads(requests[0].content) == {
+        "capture_enabled": True, "conversation_ids": [], "retention_days": 90,
+    }
+
+
+@pytest.mark.parametrize("options", [{"capture_enabled": False}, {"conversation_ids": ["C123"]}])
+def test_capture_disable_and_filter_are_rejected_without_dispatch(wire, options):
+    client, requests, _ = wire
+    with pytest.raises(ValueError, match="Slack message capture"):
+        client.slack.update_archive_settings(C, **options)
+    assert not requests
 
 
 @pytest.mark.parametrize(

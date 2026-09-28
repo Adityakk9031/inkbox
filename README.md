@@ -637,11 +637,14 @@ Use an existing Inkbox identity across multiple Slack workspace connections. The
 onboarding and direct browser handoffs, live conversations/history, durable message
 and utility actions, general file uploads/downloads, and filtered identity-owned
 Slack webhooks. Identity-wide message search spans workspace connections by default.
-Default-on capture of observed accessible messages, searchable retained history,
-bounded imports, and coverage are separate from live reads. Retention has no time
-limit by default; organization management can disable capture, restrict it, set a
-retention limit, or purge. Workspace approval, connection ownership,
-and current conversation access remain required.
+Enable Slack on an identity at creation or update before connecting workspaces.
+Accessible observed messages are captured automatically, independently of webhook
+filters. Searchable retained history, bounded imports, and coverage are separate
+from live reads. Retention has no time limit by default; organization management
+can set a retention limit or delete existing history without stopping new capture.
+Disabling the identity’s Slack channel pauses its activity without deleting its
+connections or history. Workspace approval, connection ownership, and current
+conversation access remain required.
 
 ## License
 

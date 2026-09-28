@@ -141,6 +141,7 @@ export class AgentIdentity {
 
   /** Whether this identity can be reached over iMessage. */
   get imessageEnabled(): boolean { return this._data.imessageEnabled; }
+  get slackEnabled(): boolean { return this._data.slackEnabled ?? false; }
 
   /** Whether an attached dedicated iMessage line automatically shares this profile. */
   get contactSharingEnabled(): boolean { return this._data.contactSharingEnabled; }

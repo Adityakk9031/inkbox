@@ -18,9 +18,9 @@ pub use directional::*;
 
 // Re-export the public types.
 pub use types::{
-    AgentIdentityData, AgentIdentitySummary, IdentityMailbox, IdentityMailboxCreateOptions,
-    IdentityPhoneNumber, IdentityPhoneNumberCreateOptions, IdentityTunnelCreateOptions, Unset,
-    VaultSecretIds,
+    AgentIdentityData, AgentIdentitySummary, ChannelAgentIdentityData, IdentityMailbox,
+    IdentityMailboxCreateOptions, IdentityPhoneNumber, IdentityPhoneNumberCreateOptions,
+    IdentityTunnelCreateOptions, Unset, VaultSecretIds,
 };
 
 // Re-export the domain exceptions.

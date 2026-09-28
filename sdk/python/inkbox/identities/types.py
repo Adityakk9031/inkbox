@@ -377,6 +377,8 @@ class AgentIdentitySummary:
     phone_inbound_filter_mode: FilterMode = None  # type: ignore[assignment]
     phone_outbound_filter_mode: FilterMode = None  # type: ignore[assignment]
 
+    slack_enabled: bool = False
+
     def __post_init__(self) -> None:
         for channel in ("mail", "phone"):
             shared = getattr(self, f"{channel}_filter_mode")
@@ -411,6 +413,7 @@ class AgentIdentitySummary:
             created_at=datetime.fromisoformat(d["created_at"]),
             updated_at=datetime.fromisoformat(d["updated_at"]),
             imessage_enabled=d.get("imessage_enabled", False),
+            slack_enabled=d.get("slack_enabled", False),
             contact_sharing_enabled=d.get("contact_sharing_enabled", True),
             imessage_filter_mode=FilterMode(imessage_mode),
             mail_filter_mode=FilterMode(d.get("mail_filter_mode") or "blacklist"),

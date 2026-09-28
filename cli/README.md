@@ -1134,18 +1134,29 @@ not send-outcome events. Native processing support depends on the workspace and 
 used as a fallback. Inspect capabilities for missing scopes before requesting an upgrade.
 Disconnect removes Inkbox authority, not the workspace's Slack app installation.
 
-Retained history is separate from live reads and webhook diagnostics. Capture is on
-by default for messages observed in conversations the connection can access, with no
-time-based retention limit. This is not an automatic whole-workspace or historical
-copy. Organization management can disable capture, restrict conversation selection,
-set retention, or purge. Updating archive settings replaces all fields: omitted
-retention resets to no time limit, and omitted/empty conversation selection resets
-to all conversations. Read current settings and restate values to preserve them.
-Unlike archive selection, webhook selectors use null for all and reject empty arrays.
+Slack is disabled on newly created identities. Enable it before workspace installation.
+Disabling Slack preserves connections and history but stops channel activity;
+re-enabling resumes it without importing missed messages.
+
+```bash
+inkbox identity create support-agent --slack-enabled
+inkbox identity update support-agent --slack-enabled false
+inkbox identity update support-agent --slack-enabled true
+```
+
+Retained history is separate from live reads and webhook diagnostics. All observed
+messages in conversations the connection can access are captured automatically,
+independently of webhook filters, with no time-based retention limit by default.
+This is not an automatic whole-workspace or historical copy. Organization management
+can set retention or delete retained history, but cannot disable or filter capture.
+Omitted retention resets to no time limit. Legacy capture arguments accept only
+`true` and an empty conversation list. Webhook selectors remain configurable: null
+means unrestricted, and empty arrays are rejected.
 Archive messages/search return retained records only. Backfill queues bounded imports
 and reports coverage; a completed channel page does not prove every thread is complete. `restart=true`
-restarts a completed/failed import. Purge disables capture and queues retained-content
-deletion. Archive reads still require current connection/conversation access.
+restarts a completed/failed import. Purge deletes existing retained history without
+stopping new capture. Reconnecting resumes capture automatically, but does not restore
+deleted history. Archive reads still require current connection/conversation access.
 Use the live exact-message permalink method when a Slack link is needed.
 Live message context is a bounded window (`complete=false`), not full history.
 
@@ -1193,11 +1204,10 @@ inkbox slack file upload --connection-id "$CONNECTION_ID" \
 
 Use `slack user`, `conversation members/join/leave`, `message get/context/permalink/
 update/delete`, `reaction`, `pin`, `processing-status set`, and `operation get
---operation-id ID` for utilities. `slack archive settings update --capture-enabled
-true|false` replaces all capture settings. Omitting `--retention-days` (or passing
-`null`) resets to no time limit; omitting `--capture-conversation-id` resets to all
-conversations. Repeat the latter flag to restrict capture. Read current settings and
-restate values you want to preserve. Archive subcommands
+--operation-id ID` for utilities. `slack archive settings update --connection-id ID
+--retention-days 90` sets a retention limit. Omitting `--retention-days` (or passing
+`null`) resets to no time limit. Capture is automatic for all accessible observed
+messages; use webhook filters to control which events wake your agent. Archive subcommands
 include `messages`, `search`, `backfill [--restart]`, `coverage`, and `purge`.
 
 ## License

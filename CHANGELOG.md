@@ -6,6 +6,12 @@ Versions move in lockstep across `@inkbox/sdk` (TypeScript), `inkbox`
 
 ## Unreleased
 
+- Add identity-level Slack enablement to creation, updates, and identity responses,
+  with matching SDK and CLI options. Existing calls leave the setting unchanged.
+
+- Capture accessible observed Slack messages automatically. Retention remains configurable;
+  deleting retained history does not stop new capture. Legacy disable/filter inputs fail explicitly.
+
 - Allow Slack events and filters in mixed identity-owned subscriptions; preserve explicit
   identity scope, context settings, and unchanged/clear/replace filter updates.
 
@@ -17,7 +23,7 @@ Versions move in lockstep across `@inkbox/sdk` (TypeScript), `inkbox`
 - Add Slack CLI identity-handle selection and require DM recipients before dispatch;
   separate management onboarding from explicit connected-workspace selection in examples.
 - Remove unused archive message source URLs, type the Python purge result, and clarify
-  full-replacement capture settings and independent send/utility-operation outcomes.
+  retention updates and independent send/utility-operation outcomes.
 
 - Add direct Slack browser installation handoffs, capabilities/users/members, exact message
   context/permalinks, reactions/pins, own-message edits/deletions, bounded general file

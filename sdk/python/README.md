@@ -1980,18 +1980,29 @@ not send-outcome events. Native processing support depends on the workspace and 
 used as a fallback. Inspect capabilities for missing scopes before requesting an upgrade.
 Disconnect removes Inkbox authority, not the workspace's Slack app installation.
 
-Retained history is separate from live reads and webhook diagnostics. Capture is on
-by default for messages observed in conversations the connection can access, with no
-time-based retention limit. This is not an automatic whole-workspace or historical
-copy. Organization management can disable capture, restrict conversation selection,
-set retention, or purge. Updating archive settings replaces all fields: omitted
-retention resets to no time limit, and omitted/empty conversation selection resets
-to all conversations. Read current settings and restate values to preserve them.
-Unlike archive selection, webhook selectors use null for all and reject empty arrays.
+Slack is disabled on newly created identities. Enable it before workspace installation.
+Disabling Slack preserves connections and history but stops channel activity;
+re-enabling resumes it without importing missed messages.
+
+```python
+identity = inkbox.create_identity("support-agent", slack_enabled=True)
+identity.update(slack_enabled=False)  # Pause Slack without disconnecting workspaces.
+identity.update(slack_enabled=True)   # Resume Slack.
+```
+
+Retained history is separate from live reads and webhook diagnostics. All observed
+messages in conversations the connection can access are captured automatically,
+independently of webhook filters, with no time-based retention limit by default.
+This is not an automatic whole-workspace or historical copy. Organization management
+can set retention or delete retained history, but cannot disable or filter capture.
+Omitted retention resets to no time limit. Legacy capture arguments accept only
+`true` and an empty conversation list. Webhook selectors remain configurable: null
+means unrestricted, and empty arrays are rejected.
 Archive messages/search return retained records only. Backfill queues bounded imports
 and reports coverage; a completed channel page does not prove every thread is complete. `restart=true`
-restarts a completed/failed import. Purge disables capture and queues retained-content
-deletion. Archive reads still require current connection/conversation access.
+restarts a completed/failed import. Purge deletes existing retained history without
+stopping new capture. Reconnecting resumes capture automatically, but does not restore
+deleted history. Archive reads still require current connection/conversation access.
 Use the live exact-message permalink method when a Slack link is needed.
 Live message context is a bounded window (`complete=false`), not full history.
 
@@ -2026,7 +2037,7 @@ cover all workspace history. Search errors are raised, not returned as empty res
 The connection-specific archive search remains available.
 
 ```python
-# Capture is on by default for observed accessible messages; check archive settings.
+# Accessible observed messages are captured automatically; webhook filters control wake-ups.
 history = client.slack.search_messages(
     "release notes", limit=20
 )

@@ -77,8 +77,10 @@ export interface SlackArchiveSettings {
   revision: number;
 }
 export interface SlackArchiveSettingsOptions {
-  captureEnabled: boolean;
+  /** @deprecated Capture is automatic; only true is accepted. */
+  captureEnabled?: boolean;
   retentionDays?: number | null;
+  /** @deprecated All accessible conversations are captured; only [] is accepted. */
   conversationIds?: string[];
 }
 export interface SlackArchivedMessage {
@@ -504,17 +506,21 @@ export class SlackOperationsResource {
       await this.http.get(`${base(connectionId)}/archive/settings`),
     );
   }
-  /** Organization management only; replaces all capture settings.
-   * Omitted retention resets to no time limit; omitted/empty conversation IDs reset to all.
-   * Read current settings and restate values to preserve them.
+  /** Organization management only; set message retention.
+   * Omitted retention resets to no time limit. Capture remains automatic for all
+   * accessible observed messages, independently of webhook filters.
    */
   async updateArchiveSettings(
     connectionId: string,
-    options: SlackArchiveSettingsOptions,
+    options: SlackArchiveSettingsOptions = {},
   ): Promise<SlackArchiveSettings> {
+    if (options.captureEnabled !== undefined && options.captureEnabled !== true)
+      throw new Error("Slack message capture is always enabled");
+    if (options.conversationIds?.length)
+      throw new Error("Slack message capture includes all accessible conversations");
     return settings(
       await this.http.patch(`${base(connectionId)}/archive/settings`, {
-        capture_enabled: options.captureEnabled,
+        capture_enabled: true,
         retention_days: options.retentionDays ?? null,
         conversation_ids: options.conversationIds ?? [],
       }),
@@ -603,13 +609,13 @@ export class SlackOperationsResource {
       nextCursor: r.next_cursor ?? null,
     };
   }
-  /** Organization management only; disables capture and queues retained-content deletion. */
+  /** Organization management only; delete retained history without stopping new capture. */
   async purgeArchive(
     connectionId: string,
-  ): Promise<{ status: "pending"; captureEnabled: false }> {
+  ): Promise<{ status: "pending"; captureEnabled: boolean }> {
     const r = await this.http.deleteWithResponse<{
       status: "pending";
-      capture_enabled: false;
+      capture_enabled: boolean;
     }>(`${base(connectionId)}/archive`);
     return { status: r.status, captureEnabled: r.capture_enabled };
   }

@@ -93,12 +93,8 @@ function commands(file) {
       "settings",
       "update",
       ...conn,
-      "--capture-enabled",
-      "true",
       "--retention-days",
       "null",
-      "--capture-conversation-id",
-      "C123",
     ],
     list_archived_messages: [
       "archive",
@@ -249,6 +245,17 @@ test("CLI exposes every new Slack operation with exact bytes, filters, keys and 
       retention_days: null,
       conversation_ids: [],
     });
+    const requestCount = requests.length;
+    for (const legacy of [["--capture-enabled", "false"], ["--capture-conversation-id", "C123"]]) {
+      const rejected = await run([...globals, "archive", "settings", "update", ...conn, ...legacy]);
+      assert.ok(rejected.error);
+      assert.match(rejected.stderr, /Slack message capture/);
+    }
+    assert.equal(requests.length, requestCount);
+    const help = await run([...globals, "archive", "settings", "update", "--help"]);
+    assert.equal(help.error, null, help.stderr);
+    assert.match(help.stdout, /retention-days/);
+    assert.doesNotMatch(help.stdout, /capture-enabled|capture-conversation-id/);
   } finally {
     await new Promise((resolve) => server.close(resolve));
     await rm(tmp, { recursive: true, force: true });

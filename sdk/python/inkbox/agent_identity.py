@@ -167,6 +167,11 @@ class AgentIdentity:
         return self._data.email_address
 
     @property
+    def slack_enabled(self) -> bool:
+        """Whether this identity can connect to and use Slack workspaces."""
+        return self._data.slack_enabled
+
+    @property
     def imessage_enabled(self) -> bool:
         """Whether this identity can use iMessage."""
         return self._data.imessage_enabled
@@ -2041,6 +2046,7 @@ class AgentIdentity:
         display_name: Any = _UNSET,
         description: Any = _UNSET,
         imessage_enabled: bool | None = None,
+        slack_enabled: bool = _UNSET,  # type: ignore[assignment]
         contact_sharing_enabled: bool | None = None,
         imessage_number_id: UUID | str | None = _UNSET,  # type: ignore[assignment]
         claim_imessage_number: Literal[True] | None = None,
@@ -2066,6 +2072,7 @@ class AgentIdentity:
             display_name: New display name, or ``None`` to clear.
             description: New description, or ``None`` to clear.
             imessage_enabled: Toggle iMessage reachability.
+            slack_enabled: Enable or pause Slack without deleting its connections.
             contact_sharing_enabled: Toggle automatic name and optional photo
                 sharing for an attached dedicated iMessage line.
             imessage_number_id: Attach an already-owned dedicated line by
@@ -2096,6 +2103,8 @@ class AgentIdentity:
             update_kwargs["display_name"] = display_name
         if description is not _UNSET:
             update_kwargs["description"] = description
+        if slack_enabled is not _UNSET:
+            update_kwargs["slack_enabled"] = slack_enabled
         if imessage_enabled is not None:
             update_kwargs["imessage_enabled"] = imessage_enabled
         if contact_sharing_enabled is not None:
