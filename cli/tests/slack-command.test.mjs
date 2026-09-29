@@ -65,6 +65,13 @@ test("Slack CLI sends exact requests, exposes onboarding and preserves file byte
     return JSON.parse(result.stdout);
   }
   try {
+    const setup = await check(
+      ["slack", "setup", "start", "--identity-id", i],
+      { status: "pending", retry_at: "2026-10-01T12:00:00Z", error_code: null },
+      "POST", "/api/v1/slack/applications/setup", { identity_id: i },
+    );
+    assert.equal(setup.status, "pending");
+    assert.equal(setup.retryAt, "2026-10-01T12:00:00.000Z");
     await check(
       ["slack", "connection", "list", "--identity-id", i],
       { connections: [f.connection], installation_available: false },
@@ -263,7 +270,7 @@ test("Slack CLI sends exact requests, exposes onboarding and preserves file byte
       `/api/v1/webhooks/subscriptions/${f.subscription.id}`,
       { url: "https://example.com/new" },
     );
-    assert.equal(requests.length, 26);
+    assert.equal(requests.length, 27);
     const rejected = await run([
       ...globals,
       "slack",
@@ -278,7 +285,7 @@ test("Slack CLI sends exact requests, exposes onboarding and preserves file byte
     ]);
     assert.ok(rejected.error);
     assert.match(rejected.stderr, /idempotency-key/);
-    assert.equal(requests.length, 26);
+    assert.equal(requests.length, 27);
     const missingRecipient = await run([
       ...globals,
       "slack",
@@ -289,7 +296,7 @@ test("Slack CLI sends exact requests, exposes onboarding and preserves file byte
     ]);
     assert.ok(missingRecipient.error);
     assert.match(missingRecipient.stderr, /required option.*--user-id/);
-    assert.equal(requests.length, 26);
+    assert.equal(requests.length, 27);
   } finally {
     await new Promise((resolve) => server.close(resolve));
     await rm(tmp, { recursive: true, force: true });
@@ -341,6 +348,13 @@ test("identity-scoped Slack commands resolve handles and reject ambiguous select
     "slack",
   ];
   const cases = [
+    {
+      args: ["setup", "start"],
+      response: { status: "ready", retry_at: null, error_code: null },
+      method: "POST",
+      url: "/api/v1/slack/applications/setup",
+      body: { identity_id: identityId },
+    },
     {
       args: ["search", "--q", "message"],
       response: { messages: [], next_cursor: "next", source: "archive" },

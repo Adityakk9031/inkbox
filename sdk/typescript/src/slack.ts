@@ -176,7 +176,7 @@ export class SlackResource extends SlackOperationsResource {
       setup: r.setup ? setupStatus(r.setup) : null,
     };
   }
-  /** Prepare the app without waiting; read listConnections to follow its status. */
+  /** Organization management only; prepare without waiting, then read listConnections for status. */
   async startSetup(identityId: string): Promise<SlackSetupStatus> {
     return setupStatus(await this.http.post<RawSetupStatus>(
       "/slack/applications/setup", { identity_id: identityId },

@@ -160,7 +160,7 @@ impl SlackResource {
             &[("identity_id", identity_id.to_string())],
         )?)?)
     }
-    /// Prepare the app without waiting; read list_connections to follow its status.
+    /// Organization management only; prepare without waiting, then read list_connections for status.
     pub fn start_setup(&self, identity_id: Uuid) -> Result<SlackSetupStatus> {
         Ok(serde_json::from_value(self.http.post(
             "/slack/applications/setup",

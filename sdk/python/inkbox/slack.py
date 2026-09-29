@@ -124,7 +124,7 @@ class SlackResource(SlackOperationsMixin):
         )
 
     def start_setup(self, identity_id: UUID | str) -> SlackSetupStatus:
-        """Prepare the app without waiting; read list_connections to follow its status."""
+        """Organization management only; prepare without waiting, then read list_connections for status."""
         return _parse(SlackSetupStatus, self._http.post(
             "/slack/applications/setup", json={"identity_id": str(identity_id)}
         ))

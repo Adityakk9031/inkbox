@@ -51,6 +51,20 @@ export function registerSlackCommands(program: Command): void {
     .description(
       "Slack workspace connections, live conversations, messages, and files",
     );
+  const setup = slack
+    .command("setup")
+    .description("Organization management: prepare an identity's Slack app");
+  identity(setup.command("start"))
+    .description("Start preparation without waiting; use connection list to check progress")
+    .action(
+      withErrorHandler(async function (this: Command, o: IdentityOptions) {
+        const opts = getGlobalOpts(this);
+        const client = createClient(opts);
+        output(await client.slack.startSetup(await resolveIdentityId(client, o)), {
+          json: !!opts.json,
+        });
+      }),
+    );
   page(identity(slack.command("search")))
     .description(
       "Search retained messages across an identity's workspaces; agent credentials infer identity",

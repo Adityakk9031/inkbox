@@ -6,7 +6,7 @@ Versions move in lockstep across `@inkbox/sdk` (TypeScript), `inkbox`
 
 ## Unreleased
 
-- Add `start_setup` / `startSetup` and preparation status on Slack connection
+- Add `start_setup` / `startSetup`, CLI `slack setup start`, and preparation status on Slack connection
   reads. Setup returns promptly and can be followed without repeating installation.
 - Add optional Slack webhook sender profiles and linked contact references. Contact
   reads include linked Slack workspace/user accounts when visible. Existing payloads

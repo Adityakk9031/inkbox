@@ -1057,6 +1057,8 @@ Onboarding is a separate organization-management task. With organization-managem
 credentials configured, create an invitation or start a direct browser installation:
 
 ```bash
+inkbox slack setup start --identity example-agent
+# If preparation is pending, check it with slack connection list before installing.
 inkbox slack invitation create --identity example-agent
 # Open the returned invitationUrl in the installer's browser; keep it secret.
 # Alternatively, open the secret authorizationUrl from:
@@ -1064,12 +1066,13 @@ inkbox slack installation start --identity example-agent
 ```
 
 Installation availability reports readiness, not permission to manage installations.
-`connection list`, `invitation create/list`, and `installation start` accept exactly
+`setup start`, `connection list`, `invitation create/list`, and `installation start` accept exactly
 one of `-i/--identity <handle>` or `--identity-id <uuid>`. Handles use the existing
 identity lookup; the UUID form avoids that lookup.
 
 | Command group | Operations |
 | --- | --- |
+| `slack setup` | `start` (preparation status is returned by `connection list`) |
 | `slack search` | Search retained messages across an identity's workspace connections |
 | `slack connection` | `list`, `disconnect` |
 | `slack invitation` | `create`, `list`, `revoke <invitation-id>` |

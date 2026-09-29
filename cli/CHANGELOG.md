@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Add `slack setup start` to prepare an enabled identity's Slack app without waiting;
+  use `slack connection list` to follow preparation status.
+
 - Add identity-level Slack enablement to creation, updates, and identity responses,
   with matching SDK and CLI options. Existing calls leave the setting unchanged.
 
