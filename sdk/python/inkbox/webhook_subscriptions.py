@@ -19,7 +19,6 @@ from uuid import UUID
 # `is not _UNSET` checks must compare against the same object across
 # all layers. A module-local sentinel would leak onto the wire body.
 from inkbox.identities.types import _UNSET
-from inkbox.slack import SlackWebhookFilter
 
 if TYPE_CHECKING:
     from inkbox._http import HttpTransport
@@ -94,7 +93,6 @@ class WebhookSubscription:
     context_config: WebhookContextConfig | None = None
     has_auth_token: bool = False
     auth_token: str | None = None
-    slack_filter: SlackWebhookFilter | None = None
 
     @classmethod
     def _from_dict(cls, d: dict[str, Any]) -> WebhookSubscription:
@@ -119,7 +117,6 @@ class WebhookSubscription:
             context_config=d.get("context_config"),
             has_auth_token=bool(d.get("has_auth_token", False)),
             auth_token=d.get("auth_token"),
-            slack_filter=d.get("slack_filter"),
         )
 
 
@@ -302,7 +299,6 @@ class WebhookSubscriptionsResource:
         agent_identity_id: UUID | str | None = None,
         context_config: WebhookContextConfig | None = None,
         auth_token: str | None = None,
-        slack_filter: SlackWebhookFilter | None = None,
     ) -> WebhookSubscriptionCreateResponse:
         """Create a webhook subscription.
 
@@ -355,8 +351,6 @@ class WebhookSubscriptionsResource:
             body["context_config"] = context_config
         if auth_token is not None:
             body["auth_token"] = auth_token
-        if slack_filter is not None:
-            body["slack_filter"] = _validate_slack_filter(slack_filter, event_types)
         data = self._http.post(_BASE, json=body)
         return WebhookSubscriptionCreateResponse._from_dict(data)
 
@@ -369,7 +363,6 @@ class WebhookSubscriptionsResource:
         context_config: WebhookContextConfig | None = _UNSET,  # type: ignore[assignment]
         auth_token: str | None = _UNSET,  # type: ignore[assignment]
         scope: Literal["identity"] | None = None,
-        slack_filter: SlackWebhookFilter | None = _UNSET,  # type: ignore[assignment]
     ) -> WebhookSubscription:
         """Update the URL, event-type list, context config, and/or auth token.
 
@@ -404,57 +397,13 @@ class WebhookSubscriptionsResource:
         if auth_token is not _UNSET:
             # `None` passes through as JSON null to clear the stored token.
             body["auth_token"] = auth_token
-        if slack_filter is not _UNSET:
-            body["slack_filter"] = _validate_slack_filter(
-                slack_filter, None if event_types is _UNSET else event_types
-            )
         suffix = "?scope=identity" if scope == "identity" else ""
         data = self._http.patch(f"{_BASE}/{_uuid_str(sub_id)}{suffix}", json=body)
         return WebhookSubscription._from_dict(data)
 
-    def delete(self, sub_id: UUID | str, *, scope: Literal["identity"] | None = None) -> None:
+    def delete(
+        self, sub_id: UUID | str, *, scope: Literal["identity"] | None = None
+    ) -> None:
         """Delete a subscription; mixed subscriptions require explicit identity scope."""
         suffix = "?scope=identity" if scope == "identity" else ""
         self._http.delete(f"{_BASE}/{_uuid_str(sub_id)}{suffix}")
-
-
-def _validate_slack_filter(
-    config: SlackWebhookFilter | None, events: list[str] | None
-) -> SlackWebhookFilter | None:
-    if config is None:
-        return None
-    if events is not None and not any(e.startswith("slack.") for e in events):
-        raise ValueError("slack_filter requires at least one Slack event")
-    if not isinstance(config, dict) or set(config) - {
-        "connection_ids",
-        "conversation_ids",
-        "message_kinds",
-    }:
-        raise ValueError(
-            "slack_filter must contain only connection_ids, conversation_ids, message_kinds"
-        )
-    config = dict(config)
-    if isinstance(config.get("connection_ids"), list):
-        config["connection_ids"] = [
-            str(value) if isinstance(value, UUID) else value
-            for value in config["connection_ids"]
-        ]
-    for key, values in config.items():
-        if values is None:
-            continue
-        maximum = 5 if key == "message_kinds" else 100
-        if (
-            not isinstance(values, list)
-            or not 1 <= len(values) <= maximum
-            or any(not isinstance(v, str) for v in values)
-            or len(set(values)) != len(values)
-        ):
-            raise ValueError(
-                f"slack_filter {key} must be a nonempty distinct string array, maximum {maximum}"
-            )
-        if key == "message_kinds" and any(
-            v not in {"dm", "group_dm", "mention", "channel", "thread"} for v in values
-        ):
-            raise ValueError("Invalid Slack message kind")
-
-    return config

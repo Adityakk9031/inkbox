@@ -235,13 +235,16 @@ capabilities for missing scopes; native processing support remains workspace-dep
 General file uploads accept standard base64 for 1 byte..10 MiB (CLI: a local --file).
 
 Retained history is separate from bounded live reads and webhook diagnostics. Capture
-is on by default for observed messages in accessible conversations, with no time-based
-retention limit. Organization management can disable capture, restrict conversations,
-set retention, or purge. Archive settings updates replace all fields: omitted
-retention resets to no time limit; omitted/empty conversations reset to all.
+is automatic for observed messages in accessible conversations, with no time-based
+retention limit. Organization management can set retention or purge retained history
+without stopping capture. Omitted retention resets to no time limit.
 Use archive listing/search, bounded backfill/restart, and coverage; do not infer complete workspace/thread history
-from one page or a completed channel import. Purge disables capture and queues retained
-content deletion. Archive reads require current connection/conversation access.
-Slack webhooks support optional connection/conversation/message-kind filters, not
-cross-channel context or historical delivery replay. The runtime owns attention rules,
+from one page or a completed channel import. Purge deletes retained history without stopping new capture. Archive reads require current connection/conversation access.
+Slack webhooks select incoming messages with `slack.dm_received`,
+`slack.group_dm_received`, `slack.channel_message_received`, `slack.mention_received`,
+and `slack.thread_reply_received`. Overlapping selections produce one logical delivery per subscription,
+choosing the first selected match in mention, thread, DM, group DM, channel priority.
+Subscriptions cover all accessible conversations across connected workspaces.
+There are no Slack-specific filters. Context applies only to received mail, text,
+and iMessage events; Slack historical delivery replay is unsupported. The runtime owns attention rules,
 watched threads, and its own memory. Webhook delivery order is not guaranteed.

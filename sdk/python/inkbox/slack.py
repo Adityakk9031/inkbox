@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Literal, TypedDict
+from typing import Any, Literal
 from urllib.parse import quote
 from uuid import UUID
 
@@ -13,14 +13,6 @@ from inkbox._http import HttpTransport
 from inkbox.slack_operations import SlackOperationsMixin
 
 SlackMessageKind = Literal["dm", "group_dm", "mention", "channel", "thread"]
-
-
-class SlackWebhookFilter(TypedDict, total=False):
-    """Selectors combine with AND; message kinds combine with OR. Null means all."""
-
-    connection_ids: list[UUID | str] | None
-    conversation_ids: list[str] | None
-    message_kinds: list[SlackMessageKind] | None
 
 
 @dataclass

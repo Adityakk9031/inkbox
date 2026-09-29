@@ -18,8 +18,8 @@ Versions move in lockstep across `@inkbox/sdk` (TypeScript), `inkbox`
 - Capture accessible observed Slack messages automatically. Retention remains configurable;
   deleting retained history does not stop new capture. Legacy disable/filter inputs fail explicitly.
 
-- Allow Slack events and filters in mixed identity-owned subscriptions; preserve explicit
-  identity scope, context settings, and unchanged/clear/replace filter updates.
+- Allow Slack events in mixed identity-owned subscriptions; preserve explicit
+  identity scope, context settings, signing keys, and delivery authentication.
 
 - Add identity-wide Slack message search across workspace connections in all SDKs and
   `inkbox slack search`, with optional narrowing filters and agent identity inference.
@@ -39,8 +39,18 @@ Versions move in lockstep across `@inkbox/sdk` (TypeScript), `inkbox`
 
 - Add Slack workspace invitations/connections, live conversations/messages, durable
   idempotent sends/actions, and byte-preserving file downloads across the SDKs and CLI.
-- Add all 19 Slack webhook event types and optional connection/conversation/message-kind
-  filters, preserving omitted versus explicitly cleared filters on updates.
+- Add 23 Slack webhook event types. Incoming messages use `slack.dm_received`,
+  `slack.group_dm_received`, `slack.channel_message_received`, `slack.mention_received`,
+  and `slack.thread_reply_received` through ordinary event selection. Overlapping
+  selections produce one logical delivery per subscription, prioritizing mention, thread,
+  DM, group DM, then channel among selected matches.
+- Replace the unreleased `slack.message_received` and Slack filter contract. Remove
+  `slack_filter` / `slackFilter`, `SlackWebhookFilter` / `RawSlackWebhookFilter`,
+  CLI `--slack-filter`, and Rust
+  filter-specific subscription methods. Select the five events for all incoming messages,
+  use standard subscription methods, and update incoming event handlers. Subscriptions
+  span all accessible conversations across connected workspaces; handle narrower
+  preferences in the receiving application. Other Slack event types are unchanged.
 - Document browser invitation onboarding, terminal unknown send outcomes, and
   metadata-only Slack delivery diagnostics without historical replay.
 

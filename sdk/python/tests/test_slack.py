@@ -3,7 +3,6 @@
 import json
 from pathlib import Path
 from typing import get_args
-from uuid import UUID
 
 import httpx
 import pytest
@@ -204,78 +203,75 @@ def test_timestamps_remain_strings(wire):
     assert not requests
 
 
-def test_filters_preserve_clear_replace_and_channel_rules(wire):
+@pytest.mark.parametrize("event_type", get_args(SlackWebhookEventType)[:5])
+def test_incoming_subscriptions_use_event_selection_only(wire, event_type):
     c, requests, replies = wire
-    subs = c.webhooks.subscriptions
-    replies.extend([DATA["subscription"]] * 4)
-    row = subs.create(
-        url="https://example.com/hooks/slack",
-        event_types=["slack.message_received"],
+    row_data = dict(DATA["subscription"], event_types=[event_type])
+    replies.extend([row_data, row_data])
+    row = c.webhooks.subscriptions.create(
+        url="https://example.com/hook",
         agent_identity_id=IDENTITY_ID,
-        slack_filter={"message_kinds": ["mention", "thread"]},
+        event_types=[event_type],
     )
-    assert row.slack_filter == {"message_kinds": ["mention", "thread"]}
-    assert json.loads(requests[-1].content)["slack_filter"] == row.slack_filter
-    subs.update(row.id, url="https://example.com/new")
-    assert "slack_filter" not in json.loads(requests[-1].content)
-    subs.update(row.id, slack_filter=None)
-    assert json.loads(requests[-1].content) == {"slack_filter": None}
-    subs.update(
-        row.id, slack_filter={"connection_ids": [UUID(C)], "conversation_ids": None}
-    )
+    assert not hasattr(row, "slack_filter")
+    assert row.event_types == [event_type]
+    assert requests[-1].method == "POST"
+    assert requests[-1].url.path == "/api/v1/webhooks/subscriptions"
     assert json.loads(requests[-1].content) == {
-        "slack_filter": {"connection_ids": [C], "conversation_ids": None}
+        "url": "https://example.com/hook",
+        "agent_identity_id": IDENTITY_ID,
+        "event_types": [event_type],
     }
-    for filt in [
-        {"message_kinds": []},
-        {"message_kinds": ["dm", "dm"]},
-        {"message_kinds": ["invalid"]},
-    ]:
-        with pytest.raises(ValueError):
-            subs.update(row.id, slack_filter=filt)
-    with pytest.raises(ValueError):
-        subs.create(
+    c.webhooks.subscriptions.update(row.id, event_types=[event_type])
+    assert requests[-1].method == "PATCH"
+    assert json.loads(requests[-1].content) == {"event_types": [event_type]}
+
+
+@pytest.mark.parametrize("value", [None, {}, {"message_kinds": ["mention"]}])
+def test_removed_filter_arguments_fail_without_sending(wire, value):
+    c, requests, _ = wire
+    with pytest.raises(TypeError, match="slack_filter"):
+        c.webhooks.subscriptions.create(
             url="https://example.com/hook",
-            event_types=["text.received"],
-            phone_number_id=IDENTITY_ID,
-            slack_filter={},
+            agent_identity_id=IDENTITY_ID,
+            event_types=["slack.mention_received"],
+            slack_filter=value,
         )
-    assert len(requests) == 4
+    with pytest.raises(TypeError, match="slack_filter"):
+        c.webhooks.subscriptions.update(DATA["subscription"]["id"], slack_filter=value)
+    assert not requests
 
 
 def test_exact_webhook_event_vocabulary():
     payloads = json.loads(
         (FIXTURES / "slack_webhook_events.json").read_text(encoding="utf-8")
     )
-    assert len(payloads) == 19
+    assert len(payloads) == 23
     assert {p["event_type"] for p in payloads} == set(get_args(SlackWebhookEventType))
 
 
 @pytest.mark.parametrize(
     "event_types",
-    [["slack.message_received"], ["slack.message_received", "message.received"]],
+    [["slack.mention_received"], ["slack.mention_received", "message.received"]],
 )
-def test_slack_context_and_mixed_filter_scoped_updates(wire, event_types):
+def test_slack_context_and_mixed_scoped_updates(wire, event_types):
     c, requests, replies = wire
     row = dict(DATA["subscription"], event_types=event_types)
     replies.extend([row] * 4)
     context = {"email": {"mode": "count", "count": 1}}
-    filter_value = {"message_kinds": ["mention"]}
     subscription = c.webhooks.subscriptions.create(
         url="https://example.com/hook",
         agent_identity_id=IDENTITY_ID,
         event_types=event_types,
         context_config=context,
-        slack_filter=filter_value,
     )
     assert json.loads(requests[-1].content) == {
         "url": "https://example.com/hook",
         "agent_identity_id": IDENTITY_ID,
         "event_types": event_types,
         "context_config": context,
-        "slack_filter": filter_value,
     }
-    for kwargs in [{}, {"slack_filter": None}, {"slack_filter": filter_value}]:
+    for kwargs in [{}, {"context_config": None}, {"auth_token": "synthetic-token"}]:
         c.webhooks.subscriptions.update(
             subscription.id, scope="identity", event_types=event_types, **kwargs
         )

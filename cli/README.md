@@ -1085,14 +1085,14 @@ overwrite an existing path. Invitation creation supports `--expires-in-seconds`.
 
 ```bash
 inkbox webhook subscription create --agent-identity-id 22222222-2222-4222-8222-222222222222 \
-  --url https://example.com/hooks/slack --event-type slack.message_received \
-  --slack-filter '{"conversationIds":["CEXAMPLE"],"messageKinds":["mention"]}'
-inkbox webhook subscription update SUBSCRIPTION_ID --slack-filter null
+  --url https://example.com/hooks/slack --event-type slack.mention_received \
+  --event-type slack.thread_reply_received
+inkbox webhook subscription update SUBSCRIPTION_ID \
+  --event-type slack.dm_received --event-type slack.mention_received
 ```
 
-`--slack-filter` replaces the full filter. Omit it to preserve a stored filter during
-an update; JSON `null` clears it. CLI filter fields are camelCase like the TypeScript
-SDK; the CLI maps them to the API wire shape.
+Repeat `--event-type` to select incoming Slack message categories. On update,
+the supplied event types replace the subscription's full event list.
 
 ### Slack behavior
 
@@ -1146,12 +1146,11 @@ inkbox identity update support-agent --slack-enabled true
 
 Retained history is separate from live reads and webhook diagnostics. All observed
 messages in conversations the connection can access are captured automatically,
-independently of webhook filters, with no time-based retention limit by default.
+independently of webhook subscriptions, with no time-based retention limit by default.
 This is not an automatic whole-workspace or historical copy. Organization management
 can set retention or delete retained history, but cannot disable or filter capture.
 Omitted retention resets to no time limit. Legacy capture arguments accept only
-`true` and an empty conversation list. Webhook selectors remain configurable: null
-means unrestricted, and empty arrays are rejected.
+`true` and an empty conversation list.
 Archive messages/search return retained records only. Backfill queues bounded imports
 and reports coverage; a completed channel page does not prove every thread is complete. `restart=true`
 restarts a completed/failed import. Purge deletes existing retained history without
@@ -1161,20 +1160,40 @@ Use the live exact-message permalink method when a Slack link is needed.
 Live message context is a bounded window (`complete=false`), not full history.
 
 Slack webhook envelopes use the existing signature verification and stable `id`
-deduplication; delivery order is not guaranteed. All 19 event types are exported as `SlackWebhookEventType`, with
-`SlackWebhookData` and `SlackWebhookPayload` types. Optional connection/conversation
-selectors combine with AND; message kinds combine with OR. Kinds (`dm`, `group_dm`,
-`mention`, `channel`, `thread`) affect received/updated/deleted messages only. `thread`
-means any reply, not a managed thread watch. Connection-status events bypass
-conversation/kind selectors but retain connection scope. A filter selector array must
-be nonempty and distinct (maximum 100 IDs or 5 kinds). Null means unrestricted.
+deduplication; delivery order is not guaranteed. All 23 event types are exported as
+`SlackWebhookEventType`, with `SlackWebhookData` and `SlackWebhookPayload` types.
+Select incoming messages through ordinary subscription event types:
+
+| Event | Trigger |
+| --- | --- |
+| `slack.dm_received` | Direct message |
+| `slack.group_dm_received` | Group direct message |
+| `slack.channel_message_received` | Channel message |
+| `slack.mention_received` | Message mentioning the agent |
+| `slack.thread_reply_received` | Any thread reply, not a managed thread watch |
+
+These categories overlap. Each incoming message produces at most one logical delivery per
+subscription. Its `event_type` is the first matching selected event in this priority:
+mention, thread reply, DM, group DM, channel message. `data.message_kinds` remains
+contextual metadata. Subscriptions cover all accessible conversations across the
+identity's connected workspaces; there are no connection/conversation selectors.
+Edits and deletions use their own events without message-kind filtering. The other
+18 Slack event types are unchanged.
+
 Slack events can share an identity-owned subscription with other notification families.
-A Slack filter requires at least one Slack event and affects only Slack deliveries.
 Conversation context applies only to received mail, text, and iMessage events.
-Mixed subscriptions require explicit identity scope for updates and deletion. Omitted
-filters on PATCH preserve the stored filter; explicit null clears it. Slack delivery
-logs contain metadata only; historical replay is not supported. The agent runtime
-owns attention rules, thread watches, and its own memory.
+Mixed subscriptions require explicit identity scope for updates and deletion.
+Slack delivery logs contain metadata only; historical replay is not supported.
+The agent runtime owns narrower attention rules, thread watches, and its own memory.
+
+**Upgrading the Slack preview:** replace `slack.message_received` with the relevant
+new event types (select all five for all incoming messages). Remove `slack_filter`,
+`slackFilter`, `SlackWebhookFilter` / `RawSlackWebhookFilter`, and CLI
+`--slack-filter` usage. Use ordinary
+Rust `create` / `update` methods, or `update_with_scope` for mixed subscriptions,
+instead of the removed filter-specific methods. Connection/conversation restrictions
+must be handled by the receiving application. This intentionally replaces the
+unreleased Slack subscription contract; update event handlers alongside subscriptions.
 
 ### Retained history and utility actions
 
@@ -1207,7 +1226,7 @@ update/delete`, `reaction`, `pin`, `processing-status set`, and `operation get
 --operation-id ID` for utilities. `slack archive settings update --connection-id ID
 --retention-days 90` sets a retention limit. Omitting `--retention-days` (or passing
 `null`) resets to no time limit. Capture is automatic for all accessible observed
-messages; use webhook filters to control which events wake your agent. Archive subcommands
+messages; select webhook events to control which events wake your agent. Archive subcommands
 include `messages`, `search`, `backfill [--restart]`, `coverage`, and `purge`.
 
 ## License

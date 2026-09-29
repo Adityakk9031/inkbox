@@ -6,7 +6,6 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
-import { parseSlackFilterFlag } from "../dist/commands/webhook.js";
 const cli = fileURLToPath(new URL("../dist/index.js", import.meta.url));
 const f = JSON.parse(
   await readFile(
@@ -212,67 +211,44 @@ test("Slack CLI sends exact requests, exposes onboarding and preserves file byte
       await readFile(destination),
       Buffer.from([0, 255, 128, 1]),
     );
-    await check(
-      [
-        "webhook",
-        "subscription",
-        "create",
-        "--agent-identity-id",
-        i,
-        "--url",
-        "https://example.com/hook",
-        "--event-type",
-        "slack.message_received",
-        "--slack-filter",
-        '{"messageKinds":["mention"]}',
-      ],
-      f.subscription,
-      "POST",
-      "/api/v1/webhooks/subscriptions",
-      {
-        agent_identity_id: i,
-        url: "https://example.com/hook",
-        event_types: ["slack.message_received"],
-        slack_filter: { message_kinds: ["mention"] },
-      },
-    );
-    await check(
-      ["webhook", "subscription", "create", "--agent-identity-id", i,
-        "--url", "https://example.com/hook", "--event-type", "slack.message_received",
-        "--event-type", "message.received", "--context-email", "count:1",
-        "--slack-filter", '{"messageKinds":["mention"]}'],
-      f.subscription, "POST", "/api/v1/webhooks/subscriptions",
-      {agent_identity_id: i, url: "https://example.com/hook",
-        event_types: ["slack.message_received", "message.received"],
-        context_config: {email: {mode: "count", count: 1}},
-        slack_filter: {message_kinds: ["mention"]}},
-    );
-    for (const [flags, body] of [
-      [[], {}],
-      [["--slack-filter", "null"], {slack_filter: null}],
-      [["--slack-filter", '{"messageKinds":["mention"]}'], {slack_filter: {message_kinds: ["mention"]}}],
-    ]) {
+    for (const event of ["slack.dm_received", "slack.group_dm_received", "slack.channel_message_received",
+      "slack.mention_received", "slack.thread_reply_received"]) {
       await check(
-        ["webhook", "subscription", "update", f.subscription.id, "--scope", "identity",
-          "--event-type", "slack.message_received", "--event-type", "message.received", ...flags],
-        f.subscription, "PATCH", `/api/v1/webhooks/subscriptions/${f.subscription.id}?scope=identity`,
-        {event_types: ["slack.message_received", "message.received"], ...body},
+        ["webhook", "subscription", "create", "--agent-identity-id", i,
+          "--url", "https://example.com/hook", "--event-type", event],
+        f.subscription, "POST", "/api/v1/webhooks/subscriptions",
+        { agent_identity_id: i, url: "https://example.com/hook", event_types: [event] },
+      );
+      await check(
+        ["webhook", "subscription", "update", f.subscription.id, "--event-type", event],
+        f.subscription, "PATCH", `/api/v1/webhooks/subscriptions/${f.subscription.id}`,
+        { event_types: [event] },
       );
     }
     await check(
-      [
-        "webhook",
-        "subscription",
-        "update",
-        f.subscription.id,
-        "--slack-filter",
-        "null",
-      ],
-      f.subscription,
-      "PATCH",
-      `/api/v1/webhooks/subscriptions/${f.subscription.id}`,
-      { slack_filter: null },
+      ["webhook", "subscription", "create", "--agent-identity-id", i,
+        "--url", "https://example.com/hook", "--event-type", "slack.mention_received",
+        "--event-type", "message.received", "--context-email", "count:1"],
+      f.subscription, "POST", "/api/v1/webhooks/subscriptions",
+      {agent_identity_id: i, url: "https://example.com/hook",
+        event_types: ["slack.mention_received", "message.received"],
+        context_config: {email: {mode: "count", count: 1}}},
     );
+    await check(
+      ["webhook", "subscription", "update", f.subscription.id, "--scope", "identity",
+        "--event-type", "slack.mention_received", "--event-type", "message.received"],
+      f.subscription, "PATCH", `/api/v1/webhooks/subscriptions/${f.subscription.id}?scope=identity`,
+      {event_types: ["slack.mention_received", "message.received"]},
+    );
+    for (const action of ["create", "update"]) {
+      const args = action === "create"
+        ? ["create", "--agent-identity-id", i, "--url", "https://example.com/hook", "--event-type", "slack.mention_received"]
+        : ["update", f.subscription.id];
+      const rejectedFilter = await run([...globals, "webhook", "subscription", ...args,
+        "--slack-filter", '{"messageKinds":["mention"]}']);
+      assert.ok(rejectedFilter.error);
+      assert.match(rejectedFilter.stderr, /unknown option.*--slack-filter/);
+    }
     await check(
       [
         "webhook",
@@ -287,7 +263,7 @@ test("Slack CLI sends exact requests, exposes onboarding and preserves file byte
       `/api/v1/webhooks/subscriptions/${f.subscription.id}`,
       { url: "https://example.com/new" },
     );
-    assert.equal(requests.length, 20);
+    assert.equal(requests.length, 26);
     const rejected = await run([
       ...globals,
       "slack",
@@ -302,7 +278,7 @@ test("Slack CLI sends exact requests, exposes onboarding and preserves file byte
     ]);
     assert.ok(rejected.error);
     assert.match(rejected.stderr, /idempotency-key/);
-    assert.equal(requests.length, 20);
+    assert.equal(requests.length, 26);
     const missingRecipient = await run([
       ...globals,
       "slack",
@@ -313,7 +289,7 @@ test("Slack CLI sends exact requests, exposes onboarding and preserves file byte
     ]);
     assert.ok(missingRecipient.error);
     assert.match(missingRecipient.stderr, /required option.*--user-id/);
-    assert.equal(requests.length, 20);
+    assert.equal(requests.length, 26);
   } finally {
     await new Promise((resolve) => server.close(resolve));
     await rm(tmp, { recursive: true, force: true });
@@ -462,10 +438,4 @@ test("identity-scoped Slack commands resolve handles and reject ambiguous select
   } finally {
     await new Promise((resolve) => server.close(resolve));
   }
-});
-test("filter flags distinguish omitted, clear and explicit empty invalid shapes", () => {
-  assert.equal(parseSlackFilterFlag(), undefined);
-  assert.equal(parseSlackFilterFlag("null"), null);
-  assert.deepEqual(parseSlackFilterFlag("{}"), {});
-  assert.throws(() => parseSlackFilterFlag("[]"));
 });

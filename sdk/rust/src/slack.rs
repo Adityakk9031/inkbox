@@ -17,16 +17,6 @@ pub enum SlackMessageKind {
     Channel,
     Thread,
 }
-/// Selectors combine with AND; message kinds with OR. Null means all.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct SlackWebhookFilter {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub connection_ids: Option<Vec<Uuid>>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub conversation_ids: Option<Vec<String>>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub message_kinds: Option<Vec<SlackMessageKind>>,
-}
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum SlackConnectionStatus {

@@ -1,8 +1,8 @@
 use httpmock::prelude::*;
 use httpmock::Method::PATCH;
 use inkbox::{
-    Inkbox, SlackActionStatus, SlackMessageKind, SlackMessagesOptions, SlackPageOptions,
-    SlackSendMessageOptions, SlackWebhookFilter, SlackWebhookPayload,
+    Inkbox, SlackActionStatus, SlackMessagesOptions, SlackPageOptions, SlackSendMessageOptions,
+    SlackWebhookPayload,
 };
 use serde_json::{json, Value};
 use uuid::Uuid;
@@ -182,7 +182,7 @@ fn all_operations_and_binary_download_match_the_wire() {
 }
 
 #[test]
-fn filters_roundtrip_and_patch_preserve_clear_replace() {
+fn incoming_subscriptions_use_event_selection_only() {
     let server = MockServer::start();
     let f = fixture();
     let client = Inkbox::builder("synthetic-test-key")
@@ -191,85 +191,55 @@ fn filters_roundtrip_and_patch_preserve_clear_replace() {
         .unwrap();
     let identity = id(f["connection"]["identity_id"].as_str().unwrap());
     let sub = id(f["subscription"]["id"].as_str().unwrap());
-    let filter = SlackWebhookFilter {
-        message_kinds: Some(vec![SlackMessageKind::Mention, SlackMessageKind::Thread]),
-        ..Default::default()
-    };
-    let create=server.mock(|when,then| { when.method(POST).path("/api/v1/webhooks/subscriptions").json_body(json!({"url":"https://example.com/hook","event_types":["slack.message_received"],"agent_identity_id":identity,"slack_filter":{"message_kinds":["mention","thread"]}})); then.status(201).json_body(f["subscription"].clone()); });
-    let row = client
-        .webhooks()
-        .subscriptions()
-        .create_with_slack_filter(
-            "https://example.com/hook",
-            &["slack.message_received".into()],
-            None,
-            None,
-            Some(identity),
-            None,
-            None,
-            Some(&filter),
-        )
-        .unwrap();
-    assert_eq!(
-        row.subscription.slack_filter.unwrap().message_kinds,
-        filter.message_kinds
-    );
-    create.assert();
-    for body in [
-        json!({}),
-        json!({"slack_filter":null}),
-        json!({"slack_filter":{"message_kinds":["mention","thread"]}}),
+    for event in [
+        "slack.dm_received",
+        "slack.group_dm_received",
+        "slack.channel_message_received",
+        "slack.mention_received",
+        "slack.thread_reply_received",
     ] {
+        let mut response = f["subscription"].clone();
+        response["event_types"] = json!([event]);
+        let mut create = server.mock(|when, then| {
+            when.method(POST).path("/api/v1/webhooks/subscriptions").json_body(json!({
+                "url": "https://example.com/hook", "event_types": [event], "agent_identity_id": identity
+            }));
+            then.status(201).json_body(response.clone());
+        });
+        let row = client
+            .webhooks()
+            .subscriptions()
+            .create(
+                "https://example.com/hook",
+                &[event.into()],
+                None,
+                None,
+                Some(identity),
+                None,
+                None,
+            )
+            .unwrap();
+        assert_eq!(row.subscription.event_types, vec![event]);
+        assert!(serde_json::to_value(row)
+            .unwrap()
+            .get("slack_filter")
+            .is_none());
+        create.assert();
+        create.delete();
         let mut patch = server.mock(|when, then| {
             when.method(PATCH)
                 .path(format!("/api/v1/webhooks/subscriptions/{sub}"))
-                .json_body(body.clone());
-            then.status(200).json_body(f["subscription"].clone());
+                .json_body(json!({"event_types": [event]}));
+            then.status(200).json_body(response);
         });
-        let tri = if body.get("slack_filter").is_none() {
-            None
-        } else if body["slack_filter"].is_null() {
-            Some(None)
-        } else {
-            Some(Some(&filter))
-        };
         client
             .webhooks()
             .subscriptions()
-            .update_with_slack_filter(sub, None, None, None, None, tri)
+            .update(sub, None, Some(&[event.into()]), None, None)
             .unwrap();
         patch.assert();
         patch.delete();
     }
-    assert!(client
-        .webhooks()
-        .subscriptions()
-        .create_with_slack_filter(
-            "https://example.com/hook",
-            &["text.received".into()],
-            None,
-            Some(identity),
-            None,
-            None,
-            None,
-            Some(&filter)
-        )
-        .is_err());
-    assert!(client
-        .webhooks()
-        .subscriptions()
-        .update_with_slack_filter(
-            sub,
-            None,
-            None,
-            None,
-            None,
-            Some(Some(&SlackWebhookFilter {
-                message_kinds: Some(vec![]),
-                ..Default::default()
-            }))
-        )
-        .is_err());
 }
 
 #[test]
@@ -278,7 +248,14 @@ fn errors_are_not_retried_and_event_vocabulary_deserializes() {
         "../../../tests/fixtures/slack_webhook_events.json"
     ))
     .unwrap();
-    assert_eq!(payloads.len(), 19);
+    assert_eq!(payloads.len(), 23);
+    let raw: Vec<Value> = serde_json::from_str(include_str!(
+        "../../../tests/fixtures/slack_webhook_events.json"
+    ))
+    .unwrap();
+    for (parsed, original) in payloads.iter().zip(raw) {
+        assert_eq!(serde_json::to_value(parsed).unwrap(), original);
+    }
     for status in [409, 429, 503] {
         let server = MockServer::start();
         let client = Inkbox::builder("synthetic-test-key")
@@ -322,7 +299,7 @@ fn errors_are_not_retried_and_event_vocabulary_deserializes() {
 }
 
 #[test]
-fn mixed_slack_filters_preserve_identity_scope_and_context() {
+fn mixed_slack_events_preserve_identity_scope_and_context() {
     use inkbox::webhooks::{
         WebhookContextClassConfig, WebhookContextConfig, WebhookSubscriptionScope,
     };
@@ -335,13 +312,9 @@ fn mixed_slack_filters_preserve_identity_scope_and_context() {
     let identity = id(f["connection"]["identity_id"].as_str().unwrap());
     let sub = id(f["subscription"]["id"].as_str().unwrap());
     let events = vec![
-        "slack.message_received".to_string(),
+        "slack.mention_received".to_string(),
         "message.received".to_string(),
     ];
-    let filter = SlackWebhookFilter {
-        message_kinds: Some(vec![SlackMessageKind::Mention]),
-        ..Default::default()
-    };
     let context = WebhookContextConfig {
         email: Some(WebhookContextClassConfig::Count { count: 1 }),
         ..Default::default()
@@ -349,14 +322,14 @@ fn mixed_slack_filters_preserve_identity_scope_and_context() {
     let create = server.mock(|when, then| {
         when.method(POST).path("/api/v1/webhooks/subscriptions").json_body(json!({
             "url": "https://example.com/hook", "agent_identity_id": identity, "event_types": events,
-            "context_config": {"email": {"mode": "count", "count": 1}}, "slack_filter": {"message_kinds": ["mention"]}
+            "context_config": {"email": {"mode": "count", "count": 1}}
         }));
         then.status(201).json_body(f["subscription"].clone());
     });
     client
         .webhooks()
         .subscriptions()
-        .create_with_slack_filter(
+        .create(
             "https://example.com/hook",
             &events,
             None,
@@ -364,19 +337,18 @@ fn mixed_slack_filters_preserve_identity_scope_and_context() {
             Some(identity),
             Some(&context),
             None,
-            Some(&filter),
         )
         .unwrap();
     create.assert();
-    for (filter_option, body) in [
+    for (auth_token, body) in [
         (None, json!({"event_types": events})),
         (
             Some(None),
-            json!({"event_types": events, "slack_filter": null}),
+            json!({"event_types": events, "auth_token": null}),
         ),
         (
-            Some(Some(&filter)),
-            json!({"event_types": events, "slack_filter": {"message_kinds": ["mention"]}}),
+            Some(Some("synthetic-token")),
+            json!({"event_types": events, "auth_token": "synthetic-token"}),
         ),
     ] {
         let mut patch = server.mock(|when, then| {
@@ -389,13 +361,12 @@ fn mixed_slack_filters_preserve_identity_scope_and_context() {
         client
             .webhooks()
             .subscriptions()
-            .update_with_slack_filter_and_scope(
+            .update_with_scope(
                 sub,
                 None,
                 Some(&events),
                 None,
-                None,
-                filter_option,
+                auth_token,
                 Some(WebhookSubscriptionScope::Identity),
             )
             .unwrap();

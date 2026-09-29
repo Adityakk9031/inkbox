@@ -464,8 +464,6 @@ export { MessageSendsResource, getMessageRequestKey, type MessageSendLookupOptio
 export { SlackResource } from "./slack.js";
 export type {
   SlackMessageKind,
-  SlackWebhookFilter,
-  RawSlackWebhookFilter,
   SlackConnection,
   SlackConnectionsResponse,
   SlackInvitation,

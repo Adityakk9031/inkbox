@@ -793,7 +793,11 @@ export interface A2AWebhookPayload {
 }
 
 export type SlackWebhookEventType =
-  | "slack.message_received"
+  | "slack.dm_received"
+  | "slack.group_dm_received"
+  | "slack.channel_message_received"
+  | "slack.mention_received"
+  | "slack.thread_reply_received"
   | "slack.message_updated"
   | "slack.message_deleted"
   | "slack.reaction_added"

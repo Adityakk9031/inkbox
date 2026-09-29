@@ -23,7 +23,11 @@ const payloads: SlackWebhookPayload[] = JSON.parse(
   ),
 );
 const events: SlackWebhookEventType[] = [
-  "slack.message_received",
+  "slack.dm_received",
+  "slack.group_dm_received",
+  "slack.channel_message_received",
+  "slack.mention_received",
+  "slack.thread_reply_received",
   "slack.message_updated",
   "slack.message_deleted",
   "slack.reaction_added",
@@ -215,55 +219,40 @@ it.each([409, 429, 503])(
     expect(fetch).toHaveBeenCalledTimes(1);
   },
 );
-it("preserves, clears and replaces filters with valid Slack event selection", async () => {
+it.each(events.slice(0, 5))("uses ordinary event selection for %s", async (eventType) => {
   const { fetch, reply } = mock();
   const subs = client().webhooks.subscriptions;
-  reply(fixture.subscription);
+  reply({ ...fixture.subscription, event_types: [eventType] });
   const row = await subs.create({
-    url: "https://example.com/hook",
-    agentIdentityId: I,
-    eventTypes: events,
-    slackFilter: { messageKinds: ["mention", "thread"] },
+    url: "https://example.com/hook", agentIdentityId: I, eventTypes: [eventType],
   });
-  expect(row.slackFilter?.messageKinds).toEqual(["mention", "thread"]);
-  expect(
-    JSON.parse(String(fetch.mock.calls.at(-1)![1]?.body)).slack_filter,
-  ).toEqual({ message_kinds: ["mention", "thread"] });
-  reply(fixture.subscription);
-  await subs.update(row.id, { url: "https://example.com/new" });
-  expect(
-    JSON.parse(String(fetch.mock.calls.at(-1)![1]?.body)),
-  ).not.toHaveProperty("slack_filter");
-  reply(fixture.subscription);
-  await subs.update(row.id, { slackFilter: null });
+  expect(row).not.toHaveProperty("slackFilter");
+  expect(row.eventTypes).toEqual([eventType]);
+  expect(fetch.mock.calls.at(-1)![1]?.method).toBe("POST");
+  expect(new URL(String(fetch.mock.calls.at(-1)![0])).pathname).toBe("/api/v1/webhooks/subscriptions");
   expect(JSON.parse(String(fetch.mock.calls.at(-1)![1]?.body))).toEqual({
-    slack_filter: null,
+    url: "https://example.com/hook", agent_identity_id: I, event_types: [eventType],
   });
   reply(fixture.subscription);
-  await subs.update(row.id, {
-    slackFilter: { connectionIds: [C], conversationIds: null },
-  });
-  expect(JSON.parse(String(fetch.mock.calls.at(-1)![1]?.body))).toEqual({
-    slack_filter: { connection_ids: [C], conversation_ids: null },
-  });
-  await expect(
-    subs.create({
-      url: "https://example.com/hook",
-      phoneNumberId: I,
-      eventTypes: ["text.received"],
-      slackFilter: {},
-    }),
-  ).rejects.toThrow("requires at least one Slack event");
-  await expect(
-    subs.update(row.id, { slackFilter: { messageKinds: [] } }),
-  ).rejects.toThrow("nonempty");
-  await expect(
-    subs.update(row.id, { slackFilter: { messageKinds: ["dm", "dm"] } }),
-  ).rejects.toThrow("distinct");
-  expect(fetch).toHaveBeenCalledTimes(4);
+  await subs.update(row.id, { eventTypes: [eventType] });
+  expect(fetch.mock.calls.at(-1)![1]?.method).toBe("PATCH");
+  expect(JSON.parse(String(fetch.mock.calls.at(-1)![1]?.body))).toEqual({ event_types: [eventType] });
 });
-it("exports the exact 19 event types", () => {
-  expect(events).toHaveLength(19);
+it.each([null, {}, { messageKinds: ["mention"] }])("rejects removed filter options without sending: %j", async (slackFilter) => {
+  const { fetch } = mock();
+  const subs = client().webhooks.subscriptions;
+  const legacy = { url: "https://example.com/hook", agentIdentityId: I,
+    eventTypes: ["slack.mention_received"], slackFilter };
+  await expect(subs.create(legacy)).rejects.toThrow("filters have been removed");
+  await expect(subs.update(fixture.subscription.id, legacy)).rejects.toThrow("filters have been removed");
+  const legacyWire = { ...legacy, slack_filter: slackFilter };
+  delete (legacyWire as { slackFilter?: unknown }).slackFilter;
+  await expect(subs.create(legacyWire)).rejects.toThrow("filters have been removed");
+  await expect(subs.update(fixture.subscription.id, legacyWire)).rejects.toThrow("filters have been removed");
+  expect(fetch).not.toHaveBeenCalled();
+});
+it("exports the exact 23 event types", () => {
+  expect(events).toHaveLength(23);
   expect(events).toEqual(payloads.map((p) => p.event_type));
 });
 it("rejects absent/invalid keys and numeric timestamps before sending", async () => {
@@ -303,25 +292,24 @@ it("accepts explicit null for optional Slack thread and cursor fields", async ()
 });
 
 
-it.each([["slack.message_received"], ["slack.message_received", "message.received"]])(
-  "keeps Slack context and mixed filters compatible with identity scope: %j",
+it.each([["slack.mention_received"], ["slack.mention_received", "message.received"]])(
+  "keeps Slack context and mixed events compatible with identity scope: %j",
   async (...eventTypes) => {
     const { fetch, reply } = mock();
     const subs = client().webhooks.subscriptions;
     const contextConfig = { email: { mode: "count" as const, count: 1 } };
-    const slackFilter = { messageKinds: ["mention" as const] };
     reply({ ...fixture.subscription, event_types: eventTypes });
     const row = await subs.create({
-      url: "https://example.com/hook", agentIdentityId: I, eventTypes, contextConfig, slackFilter,
+      url: "https://example.com/hook", agentIdentityId: I, eventTypes, contextConfig,
     });
     expect(JSON.parse(String(fetch.mock.calls.at(-1)![1]?.body))).toEqual({
       url: "https://example.com/hook", agent_identity_id: I, event_types: eventTypes,
-      context_config: contextConfig, slack_filter: { message_kinds: ["mention"] },
+      context_config: contextConfig,
     });
     for (const [options, wire] of [
       [{}, {}],
-      [{ slackFilter: null }, { slack_filter: null }],
-      [{ slackFilter }, { slack_filter: { message_kinds: ["mention"] } }],
+      [{ contextConfig: null }, { context_config: null }],
+      [{ authToken: "synthetic-token" }, { auth_token: "synthetic-token" }],
     ] as const) {
       reply(fixture.subscription);
       await subs.update(row.id, { scope: "identity", eventTypes, ...options });

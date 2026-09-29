@@ -1489,8 +1489,16 @@ mod tests {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 /// Rejects unrecognized event names; update the SDK to parse new event types.
 pub enum SlackWebhookEventType {
-    #[serde(rename = "slack.message_received")]
-    MessageReceived,
+    #[serde(rename = "slack.dm_received")]
+    DmReceived,
+    #[serde(rename = "slack.group_dm_received")]
+    GroupDmReceived,
+    #[serde(rename = "slack.channel_message_received")]
+    ChannelMessageReceived,
+    #[serde(rename = "slack.mention_received")]
+    MentionReceived,
+    #[serde(rename = "slack.thread_reply_received")]
+    ThreadReplyReceived,
     #[serde(rename = "slack.message_updated")]
     MessageUpdated,
     #[serde(rename = "slack.message_deleted")]

@@ -4,37 +4,6 @@ import { SlackOperationsResource } from "./slack-operations.js";
 
 export type SlackMessageKind =
   "dm" | "group_dm" | "mention" | "channel" | "thread";
-export interface SlackWebhookFilter {
-  connectionIds?: string[] | null;
-  conversationIds?: string[] | null;
-  messageKinds?: SlackMessageKind[] | null;
-}
-export interface RawSlackWebhookFilter {
-  connection_ids?: string[] | null;
-  conversation_ids?: string[] | null;
-  message_kinds?: SlackMessageKind[] | null;
-}
-export function slackFilterWire(
-  filter: SlackWebhookFilter | null,
-): RawSlackWebhookFilter | null {
-  if (filter === null) return null;
-  return {
-    connection_ids: filter.connectionIds,
-    conversation_ids: filter.conversationIds,
-    message_kinds: filter.messageKinds,
-  };
-}
-export function parseSlackFilter(
-  filter?: RawSlackWebhookFilter | null,
-): SlackWebhookFilter | null {
-  return filter == null
-    ? null
-    : {
-        connectionIds: filter.connection_ids,
-        conversationIds: filter.conversation_ids,
-        messageKinds: filter.message_kinds,
-      };
-}
 export interface SlackConnection {
   id: string;
   identityId: string;

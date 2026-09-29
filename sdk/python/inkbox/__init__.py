@@ -33,7 +33,6 @@ from inkbox.slack import (
     SlackConversationsResponse,
     SlackMessagesResponse,
     SlackFile,
-    SlackWebhookFilter,
     SlackMessageKind,
 )
 from inkbox.webhooks import SlackWebhookEventType, SlackWebhookData, SlackWebhookPayload
@@ -533,7 +532,6 @@ __all__ = [
     "SlackConversationsResponse",
     "SlackMessagesResponse",
     "SlackFile",
-    "SlackWebhookFilter",
     "SlackMessageKind",
     "SlackWebhookEventType",
     "SlackWebhookData",
