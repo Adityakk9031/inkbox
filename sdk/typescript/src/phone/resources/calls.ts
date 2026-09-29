@@ -4,7 +4,7 @@
  * Identity-scoped call operations: list, get, transcripts, place.
  */
 
-import { HttpTransport } from "../../_http.js";
+import { HttpTransport, validateIdempotencyKey } from "../../_http.js";
 import {
   CallMode,
   CallOrigin,
@@ -111,12 +111,25 @@ export class CallsResource {
    *
    * @param callId - UUID of the call.
    * @param digits - One to 30 keys from `0-9`, `*` and `#`.
+   * @param options.idempotencyKey - Optional 1–255 character key for this command.
+   *   Reuse the same key and digits when retrying an unconfirmed command; use a
+   *   new key for each intentional repeat. No automatic retries are performed.
    * @returns The digits as sent.
    */
-  async sendDtmf(callId: string, digits: string): Promise<string> {
+  async sendDtmf(
+    callId: string,
+    digits: string,
+    options: { idempotencyKey?: string } = {},
+  ): Promise<string> {
+    let requestOptions: { headers: Record<string, string> } | undefined;
+    if (options.idempotencyKey !== undefined) {
+      validateIdempotencyKey(options.idempotencyKey);
+      requestOptions = { headers: { "Idempotency-Key": options.idempotencyKey } };
+    }
     const data = await this.http.post<{ call_id: string; digits: string }>(
       `/calls/${callId}/dtmf`,
       { digits },
+      ...(requestOptions ? [requestOptions] : []),
     );
     return data.digits;
   }

@@ -54,6 +54,17 @@ def _identity_without_phone():
     return AgentIdentity(data, inkbox), inkbox
 
 
+@pytest.mark.parametrize("key", [None, "menu-choice-1"])
+def test_send_dtmf_delegates_with_idempotency_key(key):
+    identity, inkbox = _identity_with_mailbox()
+    inkbox._calls.send_dtmf.return_value = "12#"
+
+    assert identity.send_dtmf("call-id", "12#", idempotency_key=key) == "12#"
+    inkbox._calls.send_dtmf.assert_called_once_with(
+        "call-id", "12#", idempotency_key=key
+    )
+
+
 def test_a2a_client_inherits_parent_request_timeout():
     identity, inkbox = _identity_with_mailbox()
     inkbox._api_key = "ApiKey_secret"

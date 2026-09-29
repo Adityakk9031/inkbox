@@ -1073,6 +1073,19 @@ impl AgentIdentity {
         self.inkbox.calls().send_dtmf(call_id, digits)
     }
 
+    /// Press keypad digits with a key to reuse when retrying an unconfirmed
+    /// command. See [`crate::phone::resources::CallsResource::send_dtmf_with_idempotency_key`].
+    pub fn send_dtmf_with_idempotency_key(
+        &self,
+        call_id: &str,
+        digits: &str,
+        idempotency_key: &str,
+    ) -> Result<String> {
+        self.inkbox
+            .calls()
+            .send_dtmf_with_idempotency_key(call_id, digits, idempotency_key)
+    }
+
     /// Get this identity's inbound-call handling config.
     pub fn get_incoming_call_action(&self) -> Result<IncomingCallActionConfig> {
         self.inkbox
@@ -2591,7 +2604,33 @@ mod tests {
         assert_eq!(digits, "12#");
     }
 
-#[test]
+    #[test]
+    fn send_dtmf_with_idempotency_key_delegates_to_calls_resource() {
+        let server = MockServer::start();
+        let mock = server.mock(|when, then| {
+            when.method(POST)
+                .path("/api/v1/phone/calls/22222222-2222-2222-2222-222222222222/dtmf")
+                .header("Idempotency-Key", "menu-choice-1")
+                .json_body(json!({"digits": "12#"}));
+            then.status(200).json_body(json!({
+                "call_id": "22222222-2222-2222-2222-222222222222", "digits": "12#"
+            }));
+        });
+        let identity = identity_at(&server.base_url(), false);
+        assert_eq!(
+            identity
+                .send_dtmf_with_idempotency_key(
+                    "22222222-2222-2222-2222-222222222222",
+                    "12#",
+                    "menu-choice-1"
+                )
+                .unwrap(),
+            "12#"
+        );
+        mock.assert();
+    }
+
+    #[test]
     fn hangup_call_delegates_to_calls_resource() {
         let server = MockServer::start();
         let mock = server.mock(|when, then| {

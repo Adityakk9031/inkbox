@@ -12,6 +12,10 @@ Versions move in lockstep across `@inkbox/sdk` (TypeScript), `inkbox`
   `POST /phone/calls/{call_id}/dtmf`. An agent on the media WebSocket can press the same
   keys in-band with `{"event": "dtmf", "digits": "1"}`.
 - Already-ended calls surface the server's `409`; an unconfirmed command surfaces `503`.
+- Optional `idempotency_key` (Python), `idempotencyKey` (TypeScript),
+  `send_dtmf_with_idempotency_key` (Rust), and `--idempotency-key` (CLI) let callers
+  retry an unconfirmed command with the same key and digits without pressing twice.
+  No automatic retries are performed.
 - Bundled Codex plugin version `0.1.8`.
 
 ## 0.7.8 — Identity-owned webhook subscriptions

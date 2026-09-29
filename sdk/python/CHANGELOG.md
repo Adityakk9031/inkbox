@@ -6,6 +6,8 @@
   on a live call from outside it and returns the digits as sent. Already-ended calls
   surface the server's `409`; an unconfirmed command surfaces `503`. An agent on the
   media WebSocket can press the same keys in-band with `{"event": "dtmf", "digits": "1"}`.
+- Pass `idempotency_key="menu-choice-1"` on the first attempt, then reuse that key
+  and digits when retrying an unconfirmed command. No automatic retries are performed.
 
 ## 0.7.8 — Identity-owned webhook subscriptions
 

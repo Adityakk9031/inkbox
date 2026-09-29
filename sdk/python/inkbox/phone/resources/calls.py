@@ -9,6 +9,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
+from inkbox.imessage.types import _validate_idempotency_key
 from inkbox.phone.types import (
     CallMode,
     CallOrigin,
@@ -110,7 +111,9 @@ class CallsResource:
         data = self._http.post(f"/calls/{call_id}/hangup")
         return PhoneCall._from_dict(data)
 
-    def send_dtmf(self, call_id: UUID | str, digits: str) -> str:
+    def send_dtmf(
+        self, call_id: UUID | str, digits: str, *, idempotency_key: str | None = None
+    ) -> str:
         """Press keypad digits on a live call, from outside the call.
 
         The keys go out as carrier touch-tones on the live leg, in order,
@@ -125,11 +128,20 @@ class CallsResource:
         Args:
             call_id: UUID of the call.
             digits: One to 30 keys from ``0-9``, ``*`` and ``#``.
+            idempotency_key: Optional 1–255 character key for this command.
+                Reuse the same key and digits when retrying an unconfirmed
+                command; use a new key for each intentional repeat. No
+                automatic retries are performed.
 
         Returns:
             The digits as sent.
         """
-        data = self._http.post(f"/calls/{call_id}/dtmf", json={"digits": digits})
+        kwargs: dict[str, Any] = {}
+        if idempotency_key is not None:
+            kwargs["headers"] = {
+                "Idempotency-Key": _validate_idempotency_key(idempotency_key)
+            }
+        data = self._http.post(f"/calls/{call_id}/dtmf", json={"digits": digits}, **kwargs)
         return str(data["digits"])
 
     def transcripts(self, call_id: UUID | str) -> list[PhoneTranscript]:

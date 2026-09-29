@@ -403,6 +403,8 @@ inkbox phone hangup <call-id> -i <handle>    # Hang up a live call from outside 
 inkbox phone dtmf <call-id> -i <handle>      # Press keypad keys on a live call (0-9, *, #)
   --digits <keys>                            #   One to 30 keys, pressed in order; quote
                                              #     them in a shell, e.g. --digits '1*#'
+  --idempotency-key <key>                     #   Reuse this key and digits to retry an
+                                             #     unconfirmed command; a new key repeats it
 
 inkbox phone transcripts <call-id> -i <handle>  # Get call transcripts
 

@@ -347,8 +347,11 @@ keypad keys (`0-9`, `*`, `#`) on a live client-driven call from outside it, for
 automated phone menus and extensions; quote the keys so `*` and `#` reach the
 CLI. Voice AI calls press keys on their own from the task brief. A call that is
 not answered yet or has already ended surfaces the server's 409; a 503 means the
-carrier did not confirm in time and the keys may still have landed, so check the
-menu's response before pressing again. Keys are often an extension or a PIN:
+carrier did not confirm in time and the keys may still have landed. Supply
+`--idempotency-key <key>` on the first attempt and reuse that key and digits to retry
+an unconfirmed command; use a new key for an intentional repeat. No automatic
+retries occur. Without a key, check the menu's response before pressing again.
+Keys are often an extension or a PIN:
 confirm the sequence with the user before pressing it.
 
 ## Text Messages

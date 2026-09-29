@@ -987,17 +987,21 @@ class AgentIdentity:
         """
         return self._inkbox._calls.hangup(call_id)
 
-    def send_dtmf(self, call_id: str, digits: str) -> str:
+    def send_dtmf(
+        self, call_id: str, digits: str, *, idempotency_key: str | None = None
+    ) -> str:
         """Press keypad digits on one of this identity's live calls, from outside the call.
 
         Args:
             call_id: ID of the live call.
             digits: One to 30 keys from ``0-9``, ``*`` and ``#``.
+            idempotency_key: Optional key to reuse with the same digits when
+                retrying an unconfirmed command. See :meth:`CallsResource.send_dtmf`.
 
         Returns:
             The digits as sent.
         """
-        return self._inkbox._calls.send_dtmf(call_id, digits)
+        return self._inkbox._calls.send_dtmf(call_id, digits, idempotency_key=idempotency_key)
 
     def get_hosted_agent_config(self) -> HostedAgentConfig:
         """Get this identity's Inkbox Voice AI config."""

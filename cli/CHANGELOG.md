@@ -5,6 +5,8 @@
 - `inkbox phone dtmf <call-id> -i <handle> --digits <keys>` presses one to 30 keypad keys
   (`0-9`, `*`, `#`) on a live call from outside it. Already-ended calls surface the
   server's `409`; an unconfirmed command surfaces `503`.
+- Supply `--idempotency-key <key>` on the first attempt, then reuse the same key
+  and digits to retry an unconfirmed command. Use a new key for an intentional repeat.
 
 ## 0.7.8 — Identity-owned webhook subscriptions
 

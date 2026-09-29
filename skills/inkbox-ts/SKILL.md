@@ -356,14 +356,16 @@ for (const t of segments) {
   console.log(`[${t.party}] ${t.text}`);   // party: "local" or "remote"
 }
 
-// Hang up a live call from outside it (teardown confirms asynchronously,
-// so the returned call can still show its live status; already-ended
-// calls surface the server's 409)
 // Press keypad digits on a live client-driven call from outside it (0-9, *, #;
 // 1-30 keys, in order). Voice AI calls press keys on their own from the task
 // brief. Do this while the call is live; an ended call answers with a 409.
-const digits = await identity.sendDtmf(calls[0].id, "1");
+// Reuse the same key and digits only to retry an unconfirmed command (503).
+// Use a new key for each intentional repeat; no automatic retries occur.
+const digits = await identity.sendDtmf(calls[0].id, "1", { idempotencyKey: "menu-choice-1" });
 
+// Hang up a live call from outside it (teardown confirms asynchronously,
+// so the returned call can still show its live status; already-ended
+// calls surface the server's 409)
 const hungUp = await identity.hangupCall(calls[0].id);
 
 // Organization-scoped voice discovery; no identity ID is needed.

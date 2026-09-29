@@ -6,10 +6,11 @@ use serde_json::Map;
 
 use crate::error::Result;
 use crate::filters::DateRangeFilter;
-use crate::http::HttpTransport;
+use crate::http::{validate_idempotency_key, HttpTransport};
 use crate::phone::types::{
     CallOrigin, CallPlacementOptions, HostedAgentAuthorityMode, HostedAgentToolInvocationPage,
-    HostedCallPlacementOptions, PhoneCall, PhoneCallWithRateLimit, PhoneTranscript, SendDtmfResponse,
+    HostedCallPlacementOptions, PhoneCall, PhoneCallWithRateLimit, PhoneTranscript,
+    SendDtmfResponse,
 };
 
 pub struct CallsResource {
@@ -135,11 +136,39 @@ impl CallsResource {
     ///
     /// # Returns
     /// The digits as sent.
+    ///
+    /// To retry an unconfirmed command without pressing twice, use
+    /// [`send_dtmf_with_idempotency_key`](Self::send_dtmf_with_idempotency_key).
     pub fn send_dtmf(&self, call_id: &str, digits: &str) -> Result<String> {
-        let data = self.http.post(
+        self.send_dtmf_with_headers(call_id, digits, crate::http::NO_HEADERS)
+    }
+
+    /// Press keypad digits with a 1–255 character idempotency key.
+    ///
+    /// Reuse the same key and digits when retrying an unconfirmed command;
+    /// use a new key for each intentional repeat. No automatic retries are
+    /// performed. Otherwise identical to [`send_dtmf`](Self::send_dtmf).
+    pub fn send_dtmf_with_idempotency_key(
+        &self,
+        call_id: &str,
+        digits: &str,
+        idempotency_key: &str,
+    ) -> Result<String> {
+        validate_idempotency_key(idempotency_key)?;
+        self.send_dtmf_with_headers(call_id, digits, &[("Idempotency-Key", idempotency_key)])
+    }
+
+    fn send_dtmf_with_headers(
+        &self,
+        call_id: &str,
+        digits: &str,
+        headers: crate::http::Headers<'_>,
+    ) -> Result<String> {
+        let data = self.http.post_with_headers(
             &format!("/calls/{call_id}/dtmf"),
             Some(&serde_json::json!({ "digits": digits })),
             crate::http::NO_QUERY,
+            headers,
         )?;
         let sent: SendDtmfResponse = serde_json::from_value(data)?;
         Ok(sent.digits)
@@ -597,7 +626,14 @@ mod tests {
         let mock = server.mock(|when, then| {
             when.method(POST)
                 .path("/api/v1/phone/calls/22222222-2222-2222-2222-222222222222/dtmf")
-                .json_body(json!({ "digits": "12#" }));
+                .json_body(json!({ "digits": "12#" }))
+                .matches(|req| {
+                    !req.headers.as_ref().is_some_and(|headers| {
+                        headers
+                            .iter()
+                            .any(|(key, _)| key.eq_ignore_ascii_case("Idempotency-Key"))
+                    })
+                });
             then.status(200).json_body(json!({
                 "call_id": "22222222-2222-2222-2222-222222222222",
                 "digits": "12#"
@@ -628,6 +664,78 @@ mod tests {
         match err {
             InkboxError::Api { status_code, .. } => assert_eq!(status_code, 409),
             other => panic!("expected an API error, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn send_dtmf_with_idempotency_key_sets_header_and_validates_key() {
+        let server = MockServer::start();
+        let sent = server.mock(|when, then| {
+            when.method(POST)
+                .path("/api/v1/phone/calls/22222222-2222-2222-2222-222222222222/dtmf")
+                .header("Idempotency-Key", "menu-choice-1")
+                .json_body(json!({ "digits": "12#" }));
+            then.status(200).json_body(json!({
+                "call_id": "22222222-2222-2222-2222-222222222222", "digits": "12#"
+            }));
+        });
+        let inkbox = client(&server);
+        assert_eq!(
+            inkbox
+                .calls()
+                .send_dtmf_with_idempotency_key(
+                    "22222222-2222-2222-2222-222222222222",
+                    "12#",
+                    "menu-choice-1"
+                )
+                .unwrap(),
+            "12#"
+        );
+        for key in ["", &"x".repeat(256)] {
+            assert!(matches!(
+                inkbox.calls().send_dtmf_with_idempotency_key(
+                    "22222222-2222-2222-2222-222222222222",
+                    "12#",
+                    key
+                ),
+                Err(InkboxError::InvalidArgument(_))
+            ));
+        }
+        sent.assert_hits(1);
+    }
+
+    #[test]
+    fn send_dtmf_preserves_errors_without_retrying() {
+        for (status, code) in [(409, "call_not_active"), (503, "send_unconfirmed")] {
+            let server = MockServer::start();
+            let detail =
+                json!({"error": code, "message": "The keypad command could not be confirmed."});
+            let sent = server.mock(|when, then| {
+                when.method(POST)
+                    .path("/api/v1/phone/calls/22222222-2222-2222-2222-222222222222/dtmf")
+                    .header("Idempotency-Key", "menu-choice-1");
+                then.status(status).json_body(json!({"detail": detail}));
+            });
+            let err = client(&server)
+                .calls()
+                .send_dtmf_with_idempotency_key(
+                    "22222222-2222-2222-2222-222222222222",
+                    "1",
+                    "menu-choice-1",
+                )
+                .unwrap_err();
+            match err {
+                InkboxError::Api {
+                    status_code,
+                    detail: actual,
+                    ..
+                } => {
+                    assert_eq!(status_code, status);
+                    assert_eq!(actual.to_string(), detail.to_string());
+                }
+                other => panic!("expected an API error, got {other:?}"),
+            }
+            sent.assert_hits(1);
         }
     }
 
