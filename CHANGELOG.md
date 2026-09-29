@@ -21,6 +21,7 @@ Versions move in lockstep across `@inkbox/sdk` (TypeScript), `inkbox`
 
 ### Changed
 
+- Bundled Codex plugin version `0.1.9`.
 - Completed keyed sends replay their original response. Read the message or use
   webhooks for current delivery status. Request retries do not guarantee delivery retries.
 - SDK send methods select replay with `Prefer: idempotency-replay`. Requests from
