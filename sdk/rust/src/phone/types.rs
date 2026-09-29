@@ -496,7 +496,7 @@ pub struct PhoneNumber {
 /// Confirmation that the carrier accepted a keypad command
 /// (`POST /calls/{call_id}/dtmf`).
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SendDtmfResponse {
+pub(crate) struct SendDtmfResponse {
     /// The call the keys were pressed on.
     pub call_id: String,
     /// The keys as sent.

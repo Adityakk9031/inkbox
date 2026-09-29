@@ -12,6 +12,7 @@ Versions move in lockstep across `@inkbox/sdk` (TypeScript), `inkbox`
   `POST /phone/calls/{call_id}/dtmf`. An agent on the media WebSocket can press the same
   keys in-band with `{"event": "dtmf", "digits": "1"}`.
 - Already-ended calls surface the server's `409`; an unconfirmed command surfaces `503`.
+- Bundled Codex plugin version `0.1.8`.
 
 ## 0.7.8 — Identity-owned webhook subscriptions
 

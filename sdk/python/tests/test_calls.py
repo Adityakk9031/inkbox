@@ -173,6 +173,13 @@ class TestCallsSendDtmf:
         transport.post.assert_called_once_with(f"/calls/{CALL_ID}/dtmf", json={"digits": "12#"})
         assert digits == "12#"
 
+    def test_accepts_uuid_call_id(self, client, transport):
+        transport.post.return_value = {"call_id": CALL_ID, "digits": "1"}
+
+        client._calls.send_dtmf(UUID(CALL_ID), "1")
+
+        transport.post.assert_called_once_with(f"/calls/{CALL_ID}/dtmf", json={"digits": "1"})
+
 
 class TestCallsHangup:
     def test_posts_hangup_and_returns_call(self, client, transport):

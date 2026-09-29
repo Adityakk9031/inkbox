@@ -2573,6 +2573,25 @@ mod tests {
     }
 
     #[test]
+    fn send_dtmf_delegates_to_calls_resource() {
+        let server = MockServer::start();
+        let mock = server.mock(|when, then| {
+            when.method(POST)
+                .path("/api/v1/phone/calls/22222222-2222-2222-2222-222222222222/dtmf");
+            then.status(200).json_body(json!({
+                "call_id": "22222222-2222-2222-2222-222222222222",
+                "digits": "12#"
+            }));
+        });
+        let identity = identity_at(&server.base_url(), false);
+        let digits = identity
+            .send_dtmf("22222222-2222-2222-2222-222222222222", "12#")
+            .unwrap();
+        mock.assert();
+        assert_eq!(digits, "12#");
+    }
+
+#[test]
     fn hangup_call_delegates_to_calls_resource() {
         let server = MockServer::start();
         let mock = server.mock(|when, then| {

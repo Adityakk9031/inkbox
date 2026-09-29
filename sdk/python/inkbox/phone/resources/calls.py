@@ -115,10 +115,12 @@ class CallsResource:
 
         The keys go out as carrier touch-tones on the live leg, in order,
         so a client-driven call can work an automated phone menu. An agent
-        on the media WebSocket can press the same keys in-band with
-        ``{"event": "dtmf", "digits": "1"}``. A call that has already
-        ended (or has no active carrier leg yet) surfaces the server's 409
-        verbatim; an unconfirmed command surfaces its 503.
+        on the media WebSocket can press the same keys in-band with the
+        ``dtmf`` event (see the media stream docs at
+        https://inkbox.ai/docs/api/phone/media-stream). A call that has
+        already ended, or is not answered yet, surfaces the server's 409
+        verbatim; a command the carrier did not confirm in time surfaces
+        its 503, and the keys may still have landed.
 
         Args:
             call_id: UUID of the call.

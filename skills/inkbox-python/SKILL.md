@@ -354,11 +354,12 @@ for t in identity.list_transcripts(calls[0].id):
 # Hang up a live call from outside it (teardown confirms asynchronously,
 # so the returned call can still show its live status; already-ended
 # calls surface the server's 409)
-call = identity.hangup_call(calls[0].id)
-
 # Press keypad digits on a live client-driven call from outside it (0-9, *, #;
-# 1-30 keys). Voice AI calls press keys on their own from the task brief.
+# 1-30 keys, in order). Voice AI calls press keys on their own from the task
+# brief. Do this while the call is live; an ended call answers with a 409.
 digits = identity.send_dtmf(calls[0].id, "1")
+
+call = identity.hangup_call(calls[0].id)
 
 # Organization-scoped voice discovery; no identity ID is needed.
 # Entries include id, name, description, available, and optional preview_url.
