@@ -376,10 +376,8 @@ export class AgentIdentity {
     /** Embed an open-tracking pixel when `bodyHtml` is present; opens surface as `firstOpenedAt`/`openCount`. */
     trackOpens?: boolean;
     /**
-     * Makes this send safe to retry after a lost or timed-out response: a
-     * retry under the same key cannot put a second copy of the email on the
-     * wire. At-most-once, not a replay — a repeat under a key that already
-     * sent throws rather than returning the original message.
+     * Reuse this key and input across calls to replay the original response.
+     * Omitted keys are generated per call and preserved during bounded retries.
      */
     idempotencyKey?: string;
   }): Promise<Message> {
@@ -828,6 +826,7 @@ export class AgentIdentity {
     conversationId?: string | null;
     text?: string | null;
     mediaUrls?: string[] | null;
+    idempotencyKey?: string;
   }): Promise<TextMessage> {
     this._requirePhone();
     return this._inkbox._texts.send(this._phoneNumber!.id, options);
@@ -983,6 +982,7 @@ export class AgentIdentity {
     text?: string | null;
     mediaUrls?: string[] | null;
     sendStyle?: IMessageSendStyle | string | null;
+    idempotencyKey?: string;
   }): Promise<IMessage> {
     this._requireIMessage();
     return this._inkbox._imessages.send({

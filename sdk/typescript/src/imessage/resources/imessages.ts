@@ -10,6 +10,7 @@
  */
 
 import { HttpTransport, validateIdempotencyKey } from "../../_http.js";
+import { postMessage } from "../../message_sends.js";
 import {
   IMessage,
   IMessageAssignment,
@@ -147,6 +148,7 @@ export class IMessagesResource {
     mediaUrls?: string[] | null;
     sendStyle?: IMessageSendStyle | string | null;
     agentIdentityId?: string | null;
+    idempotencyKey?: string;
   }): Promise<IMessage> {
     const body: {
       to?: string | string[];
@@ -174,10 +176,11 @@ export class IMessagesResource {
     if (options.agentIdentityId != null) {
       params["agent_identity_id"] = options.agentIdentityId;
     }
-    const data = await this.http.post<{ message: RawIMessage }>(
+    const data = await postMessage<{ message: RawIMessage }>(this.http,
       "/messages",
       body,
-      { params },
+      options.idempotencyKey,
+      params,
     );
     return parseIMessage(data.message);
   }

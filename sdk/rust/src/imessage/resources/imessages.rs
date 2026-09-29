@@ -102,6 +102,29 @@ impl IMessagesResource {
         send_style: Option<IMessageSendStyle>,
         agent_identity_id: Option<&Uuid>,
     ) -> Result<IMessage> {
+        self.send_with_idempotency_key(
+            to,
+            conversation_id,
+            text,
+            media_urls,
+            send_style,
+            agent_identity_id,
+            &Uuid::new_v4().to_string(),
+        )
+    }
+
+    /// Retry one iMessage request with a stable key and unchanged input.
+    #[allow(clippy::too_many_arguments)]
+    pub fn send_with_idempotency_key(
+        &self,
+        to: Option<&str>,
+        conversation_id: Option<&Uuid>,
+        text: Option<&str>,
+        media_urls: Option<&[String]>,
+        send_style: Option<IMessageSendStyle>,
+        agent_identity_id: Option<&Uuid>,
+        idempotency_key: &str,
+    ) -> Result<IMessage> {
         // Build the body inserting only the fields that were supplied.
         let mut body = serde_json::Map::new();
         if let Some(t) = to {
@@ -127,7 +150,9 @@ impl IMessagesResource {
             params.push(("agent_identity_id", id.to_string()));
         }
 
-        let data = self.http.post("/messages", Some(&body), &params)?;
+        let data = self
+            .http
+            .post_message("/messages", &body, &params, Some(idempotency_key))?;
         // The server wraps the row under a "message" key.
         let message = data
             .get("message")
@@ -152,6 +177,27 @@ impl IMessagesResource {
         send_style: Option<IMessageSendStyle>,
         agent_identity_id: Option<&Uuid>,
     ) -> Result<IMessage> {
+        self.send_group_with_idempotency_key(
+            to,
+            text,
+            media_urls,
+            send_style,
+            agent_identity_id,
+            &Uuid::new_v4().to_string(),
+        )
+    }
+
+    /// Retry one group send using the original key.
+    #[allow(clippy::too_many_arguments)]
+    pub fn send_group_with_idempotency_key(
+        &self,
+        to: &[String],
+        text: Option<&str>,
+        media_urls: Option<&[String]>,
+        send_style: Option<IMessageSendStyle>,
+        agent_identity_id: Option<&Uuid>,
+        idempotency_key: &str,
+    ) -> Result<IMessage> {
         let mut body = serde_json::Map::new();
         body.insert("to".to_string(), json!(to));
         if let Some(t) = text {
@@ -169,7 +215,9 @@ impl IMessagesResource {
         if let Some(id) = agent_identity_id {
             params.push(("agent_identity_id", id.to_string()));
         }
-        let data = self.http.post("/messages", Some(&body), &params)?;
+        let data = self
+            .http
+            .post_message("/messages", &body, &params, Some(idempotency_key))?;
         let message = data
             .get("message")
             .cloned()

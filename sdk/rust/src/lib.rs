@@ -80,5 +80,6 @@ pub use response_metadata::{APIResponse, ResponseMetadata, ResponseNotice, Respo
 
 #[cfg(test)]
 mod directional_tests;
+pub mod message_sends;
 #[cfg(test)]
 mod response_metadata_tests;

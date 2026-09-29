@@ -5,6 +5,7 @@ Tests for IMessagesResource and IMessageContactRulesResource.
 """
 
 from uuid import UUID
+from unittest.mock import ANY
 
 import pytest
 import inkbox
@@ -162,7 +163,7 @@ class TestIMessagesSend:
         transport.post.assert_called_once_with(
             "/messages",
             json={"to": REMOTE, "text": "Hello over iMessage"},
-            params=None,
+            headers={"Idempotency-Key": ANY, "Prefer": "idempotency-replay"},
         )
 
     def test_passes_media_and_send_style_by_conversation_id(self, client, transport):
@@ -184,6 +185,7 @@ class TestIMessagesSend:
                 "media_urls": ["https://media.example/reply.jpg"],
                 "send_style": "slam",
             },
+            headers={"Idempotency-Key": ANY, "Prefer": "idempotency-replay"},
             params={"agent_identity_id": IDENTITY_ID},
         )
 
@@ -213,6 +215,7 @@ class TestIMessagesSend:
                 "media_urls": ["https://media.example/group.jpg"],
                 "send_style": "confetti",
             },
+            headers={"Idempotency-Key": ANY, "Prefer": "idempotency-replay"},
             params={"agent_identity_id": IDENTITY_ID},
         )
         assert msg.assignment_id is None

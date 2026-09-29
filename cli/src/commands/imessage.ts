@@ -89,6 +89,7 @@ export interface IMessageSendCommandOptions {
   text?: string;
   mediaUrl?: string;
   sendStyle?: string;
+  idempotencyKey?: string;
 }
 
 export function buildIMessageSendOptions(
@@ -108,6 +109,7 @@ export function buildIMessageSendOptions(
     return { error: "Pass --text, --media-url, or both." };
   }
   const sendOptions: SendIMessageOptions = {};
+  if (cmdOpts.idempotencyKey !== undefined) sendOptions.idempotencyKey = cmdOpts.idempotencyKey;
   if (recipients.length > 0) {
     sendOptions.to = recipients.length === 1 ? recipients[0] : recipients;
   }
@@ -272,6 +274,7 @@ export function registerIMessageCommands(program: Command): void {
   imessage
     .command("send")
     .description("Send an iMessage or reply to an existing conversation")
+    .option("--idempotency-key <key>", "Reuse this key when retrying the same message")
     .requiredOption("-i, --identity <handle>", "Agent identity handle")
     .option("--to <numbers>", "One E.164 recipient or a comma-separated group")
     .option("--conversation-id <id>", "Existing conversation UUID to reply into")

@@ -535,8 +535,8 @@ export class HttpTransport {
     return (metadata) => notifyResponseObservers(metadata, this.collectMetadata, this.onResponse);
   }
 
-  async get<T>(path: string, params?: Params, opts?: { timeoutMs?: number }): Promise<T> {
-    return this.request<T>("GET", path, { params, timeoutMs: opts?.timeoutMs });
+  async get<T>(path: string, params?: Params, opts?: { timeoutMs?: number; headers?: Record<string, string> }): Promise<T> {
+    return this.request<T>("GET", path, { params, timeoutMs: opts?.timeoutMs, headers: opts?.headers });
   }
 
   async post<T>(

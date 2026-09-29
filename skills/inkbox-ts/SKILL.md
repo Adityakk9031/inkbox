@@ -1464,3 +1464,12 @@ await inkbox.mailboxes.update("alex@example.com", {
 // Pause without deleting; use null for both content fields to clear them.
 await inkbox.mailboxes.update("alex@example.com", { signatureEnabled: false });
 ```
+
+## Message retries
+
+Send methods generate a key and preserve it during bounded request retries.
+Application workflows spanning calls can supply `idempotencyKey` and reuse the
+exact input. A replay returns the original response, while normal message reads
+show current delivery status. Inkbox owns safe delivery retries after acceptance.
+Use `inkbox.messageSends.lookup(...)` or `lookupEmail(...)` to recover a lost ID.
+An unavailable result does not mean the original message was never sent.

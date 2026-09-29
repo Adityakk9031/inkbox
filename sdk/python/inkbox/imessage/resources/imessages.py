@@ -15,6 +15,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
+from inkbox._message_requests import post_message
 from inkbox.imessage.types import (
     IMessage,
     IMessageAssignment,
@@ -117,6 +118,7 @@ class IMessagesResource:
         media_urls: list[str] | None = None,
         send_style: IMessageSendStyle | str | None = None,
         agent_identity_id: UUID | str | None = None,
+        idempotency_key: str | None = None,
     ) -> IMessage:
         """Send an outbound iMessage.
 
@@ -175,7 +177,7 @@ class IMessagesResource:
         params: dict[str, Any] | None = None
         if agent_identity_id is not None:
             params = {"agent_identity_id": str(agent_identity_id)}
-        data = self._http.post("/messages", json=body, params=params)
+        data = post_message(self._http, "/messages", json=body, params=params, idempotency_key=idempotency_key)
         return IMessage._from_dict(data["message"])
 
     def list(

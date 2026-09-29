@@ -602,6 +602,24 @@ preserves legacy behavior and receives 409 when targeting a mixed subscription.
 Event-list updates replace the complete selection. Incoming-call actions remain
 separate identity settings.
 
+## Safe message retries
+
+SDK send methods automatically include `Prefer: idempotency-replay`. Raw HTTP
+callers use this preference with `Idempotency-Key`. Older requests keep their
+existing behavior. Email and SMS continue waiting for send acceptance; iMessage
+continues returning its queued acknowledgement.
+
+Email, SMS/MMS, and iMessage send calls generate a request key and reuse it during
+bounded request retries. Pass an explicit `idempotency_key` (Python) or
+`idempotencyKey` (TypeScript) when your workflow retries across separate calls.
+Rust provides `send_with_idempotency_key` variants without changing existing methods.
+
+A completed retry returns the original response, not current delivery status.
+Read the message or use webhooks for delivery updates. Inkbox handles safe delivery
+retries after accepting a queued message. Use `message_sends.lookup` (Python),
+`messageSends.lookup` (TypeScript), or `inkbox send-lookup` to recover an original ID.
+See [message send retries](https://inkbox.ai/docs/api/message-sends).
+
 ## License
 
 MIT
