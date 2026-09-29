@@ -32,6 +32,14 @@ REMOTE = "+15551234567"
 GROUP_REMOTE = "+15557654321"
 HANDLE = "support-bot"
 
+
+def test_get_message_reads_current_status_with_identity_filter(client, transport):
+    transport.get.return_value = IMESSAGE_DICT
+    message = client.imessages.get(MSG_ID, agent_identity_id=IDENTITY_ID)
+    assert str(message.id) == MSG_ID
+    transport.get.assert_called_once_with(f"/messages/{MSG_ID}", params={"agent_identity_id": IDENTITY_ID})
+    transport.post.assert_not_called()
+
 IMESSAGE_NUMBER_DICT = {
     "id": "99999999-0000-0000-0000-000000000001",
     "number": "+15551230001",

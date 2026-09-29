@@ -272,6 +272,17 @@ export function registerIMessageCommands(program: Command): void {
     );
 
   imessage
+    .command("get <message-id>")
+    .description("Read an iMessage and its current delivery status")
+    .requiredOption("-i, --identity <handle>", "Agent identity handle")
+    .action(withErrorHandler(async function (this: Command, messageId: string, options: { identity: string }) {
+      const global = getGlobalOpts(this);
+      const client = createClient(global);
+      const identity = await client.getIdentity(options.identity);
+      output(await client.imessages.get(messageId, { agentIdentityId: identity.id }), { json: !!global.json });
+    }));
+
+  imessage
     .command("send")
     .description("Send an iMessage or reply to an existing conversation")
     .option("--idempotency-key <key>", "Reuse this key when retrying the same message")

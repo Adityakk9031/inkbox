@@ -47,3 +47,45 @@ impl MessageSendsResource {
         self.lookup("mailbox", &id, operation, key)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::Inkbox;
+    use httpmock::prelude::*;
+    use serde_json::json;
+
+    #[test]
+    fn email_lookup_resolves_mailbox_and_keeps_the_key_out_of_the_url() {
+        let server = MockServer::start();
+        let mailbox = Uuid::new_v4();
+        let message = Uuid::new_v4();
+        let address = server.mock(|when, then| {
+            when.method(GET)
+                .path("/api/v1/mail/mailboxes/agent@example.com");
+            then.status(200).json_body(json!({"id": mailbox}));
+        });
+        let lookup = server.mock(|when, then| {
+            when.method(GET)
+                .path("/api/v1/message-sends/lookup")
+                .query_param("sender_kind", "mailbox")
+                .query_param("sender_id", mailbox.to_string())
+                .query_param("operation", "mail.send")
+                .header("Idempotency-Key", "original");
+            then.status(200).json_body(json!({"message_id": message}));
+        });
+        let client = Inkbox::builder("test-key")
+            .base_url(server.base_url())
+            .build()
+            .unwrap();
+        assert_eq!(
+            client
+                .message_sends()
+                .lookup_email("agent@example.com", "mail.send", "original")
+                .unwrap(),
+            message
+        );
+        address.assert();
+        lookup.assert();
+    }
+}

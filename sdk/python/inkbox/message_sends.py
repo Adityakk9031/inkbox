@@ -10,6 +10,12 @@ if TYPE_CHECKING:
     from inkbox.mail.resources.mailboxes import MailboxesResource
 
 
+def get_message_request_key(error: BaseException) -> str | None:
+    """Recover a send key from API, transport, or response-decoding errors."""
+    key = getattr(error, "idempotency_key", None)
+    return key if isinstance(key, str) else None
+
+
 class MessageSendsResource:
     """Read-only message lookup; this resource never initiates a send."""
 

@@ -1457,7 +1457,8 @@ inkbox.mailboxes.update("alex@example.com", signature_enabled=False)
 Send methods generate a key and preserve it during bounded request retries.
 Use an explicit `idempotency_key` only when application code must retry the same
 logical message across calls. Reuse the exact input. A replay returns the original
-response; read the message for current delivery status. Inkbox handles safe delivery
-retries after accepting a queued message. Recover a lost ID with
+response; read the message for current delivery status. Request retries do not
+guarantee delivery retries. Recover a failed send's key with the public
+`get_message_request_key(error)` helper. Recover a lost ID with
 `inkbox.message_sends.lookup(...)` or `lookup_email(...)`. Never treat a missing
 result as proof that submitting a second message is safe.

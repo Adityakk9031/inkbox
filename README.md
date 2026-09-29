@@ -614,11 +614,20 @@ bounded request retries. Pass an explicit `idempotency_key` (Python) or
 `idempotencyKey` (TypeScript) when your workflow retries across separate calls.
 Rust provides `send_with_idempotency_key` variants without changing existing methods.
 
+After a failed send, recover its generated key with `get_message_request_key(error)`
+(Python, imported from `inkbox`) or `getMessageRequestKey(error)` (TypeScript,
+imported from `@inkbox/sdk`). Both handle transport and API errors. The CLI prints
+the key in its error output. Rust errors do not expose automatically generated
+keys: preserve your own key and use an explicit-key variant for cross-call recovery.
+
 A completed retry returns the original response, not current delivery status.
-Read the message or use webhooks for delivery updates. Inkbox handles safe delivery
-retries after accepting a queued message. Use `message_sends.lookup` (Python),
+Read the message or use webhooks for delivery updates. A queued response confirms
+acceptance, not delivery or a guarantee of delivery retries. Use `message_sends.lookup` (Python),
 `messageSends.lookup` (TypeScript), or `inkbox send-lookup` to recover an original ID.
 See [message send retries](https://inkbox.ai/docs/api/message-sends).
+
+Read an iMessage by ID with `imessages.get(...)`, Rust's `imessages().get(...)`,
+or `inkbox imessage get <message-id> --identity <handle>`.
 
 ## License
 

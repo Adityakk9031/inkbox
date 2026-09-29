@@ -921,5 +921,6 @@ Send commands generate a key and preserve it during bounded request retries.
 Use `--idempotency-key` on email, text, or iMessage sends for a workflow that repeats
 the same intended message across command invocations. Preserve the exact input.
 `inkbox send-lookup --help` describes read-only ID recovery. Check current delivery
-through the existing get commands; Inkbox handles safe delivery retries after
-acceptance. Do not submit a new message solely because confirmation is missing.
+through the existing get commands, including `imessage get`. Request retries do
+not guarantee delivery retries. Errors print the original request key. Do not
+submit a new message solely because confirmation is missing.

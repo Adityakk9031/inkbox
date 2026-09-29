@@ -14,12 +14,15 @@ Versions move in lockstep across `@inkbox/sdk` (TypeScript), `inkbox`
   `--idempotency-key` for `text send` and `imessage send`.
 - Read-only message-ID lookup by request key, including email-address helpers and
   the `send-lookup` CLI command.
+- Single-message iMessage reads in all SDKs and `imessage get` in the CLI.
+- Typed `get_message_request_key(error)` / `getMessageRequestKey(error)` helpers
+  recover generated keys from Python/TypeScript send failures. Rust cross-call
+  recovery requires a caller-preserved key and the explicit-key send variants.
 
 ### Changed
 
 - Completed keyed sends replay their original response. Read the message or use
-  webhooks for current delivery status. Inkbox handles safe delivery retries after
-  accepting a queued message.
+  webhooks for current delivery status. Request retries do not guarantee delivery retries.
 - SDK send methods select replay with `Prefer: idempotency-replay`. Requests from
   older SDKs retain their existing behavior, including completed email retry conflicts.
   Email and SMS still wait for send acceptance; successful response shapes are unchanged.

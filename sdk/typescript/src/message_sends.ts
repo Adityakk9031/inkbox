@@ -10,6 +10,12 @@ export function messageKey(value?: string): string {
   return key;
 }
 
+/** Recover a send key from API, connection, timeout, or decoding errors. */
+export function getMessageRequestKey(error: unknown): string | undefined {
+  return error instanceof Error && "idempotencyKey" in error && typeof error.idempotencyKey === "string"
+    ? error.idempotencyKey : undefined;
+}
+
 /** Bounded request retries keep the same key. A separate call is a new message. */
 export async function postMessage<T>(http: HttpTransport, path: string, body: unknown,
   key?: string, params?: Record<string, string>): Promise<T> {

@@ -837,6 +837,29 @@ mod tests {
         }
     }
 
+    #[test]
+    fn message_retry_contract_keeps_keys_for_coordination_and_ambiguity() {
+        for (status, code, count) in [
+            (409, "idempotency_in_progress", 3),
+            (503, "send_outcome_ambiguous", 3),
+            (409, "result_unavailable", 1),
+        ] {
+            let server = MockServer::start();
+            let request = server.mock(|when, then| {
+                when.method(POST)
+                    .path("/messages")
+                    .header("Idempotency-Key", "original");
+                then.status(status)
+                    .header("Retry-After", "0")
+                    .json_body(json!({"detail": {"error": code}}));
+            });
+            assert!(transport(&server)
+                .post_message("/messages", &json!({}), NO_QUERY, Some("original"))
+                .is_err());
+            request.assert_hits(count);
+        }
+    }
+
     fn variant_name(error: &InkboxError) -> &'static str {
         match error {
             InkboxError::Api { .. } => "api",

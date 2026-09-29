@@ -29,6 +29,28 @@ test("send-lookup carries the key only in a header and performs no send", async 
   } finally { server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); }
 });
 
+test("imessage get resolves its identity and reads one message", async () => {
+  const requests = [];
+  const server = http.createServer((request, response) => {
+    requests.push({ method: request.method, url: request.url });
+    response.setHeader("Content-Type", "application/json");
+    response.end(JSON.stringify(request.url.includes("/imessage/messages/")
+      ? { id, conversation_id: id, assignment_id: null, direction: "outbound", content: "Hello",
+        message_type: "message", service: "imessage", status: "pending", is_read: false,
+        created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:00Z" }
+      : { id, organization_id: "org_example", agent_handle: "example", imessage_enabled: true,
+        created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:00Z" }));
+  });
+  await new Promise(resolve => server.listen(0, "127.0.0.1", resolve));
+  try {
+    const result = await run(server.address().port, ["imessage", "get", id, "--identity", "example"]);
+    assert.equal(result.id, id);
+    assert.equal(result.status, "pending");
+    assert(requests.every(request => request.method === "GET"));
+    assert.equal(requests[1].url, `/api/v1/imessage/messages/${id}?agent_identity_id=${id}`);
+  } finally { server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); }
+});
+
 test("text send preserves its generated key after a lost HTTP response", async () => {
   const sends = [];
   const server = http.createServer((request, response) => {

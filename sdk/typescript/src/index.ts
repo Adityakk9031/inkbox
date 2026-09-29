@@ -468,4 +468,4 @@ export type { ResponseNotice, ResponseMetadata, ResponseObserver, APIResponse } 
 export * from "./companion.js";
 
 export type { SenderAccess } from "./sender_access.js";
-export { MessageSendsResource, type MessageSendLookupOptions } from "./message_sends.js";
+export { MessageSendsResource, getMessageRequestKey, type MessageSendLookupOptions } from "./message_sends.js";

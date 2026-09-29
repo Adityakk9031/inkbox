@@ -46,6 +46,8 @@ class TextsResource:
                 server resolves it to that conversation's participants.
             text: Message body.
             media_urls: MMS media URLs. Pass with ``text`` or by themselves.
+            idempotency_key: Optional stable key for retries across calls. Each
+                call otherwise generates a key and preserves it during retries.
 
         Returns:
             The queued ``TextMessage`` row. The full outbound lifecycle

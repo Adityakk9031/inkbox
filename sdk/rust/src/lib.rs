@@ -53,6 +53,7 @@ pub mod contacts;
 pub mod identities;
 pub mod imessage;
 pub mod mail;
+pub mod message_sends;
 pub mod notes;
 pub mod phone;
 pub mod tunnels;
@@ -80,6 +81,5 @@ pub use response_metadata::{APIResponse, ResponseMetadata, ResponseNotice, Respo
 
 #[cfg(test)]
 mod directional_tests;
-pub mod message_sends;
 #[cfg(test)]
 mod response_metadata_tests;

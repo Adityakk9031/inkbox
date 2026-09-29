@@ -61,6 +61,13 @@ function validateSendableReaction(reaction: IMessageReactionType | string): stri
 export class IMessagesResource {
   constructor(private readonly http: HttpTransport) {}
 
+  /** Read a visible message and its current delivery status. */
+  async get(messageId: string, options?: { agentIdentityId?: string }): Promise<IMessage> {
+    const data = await this.http.get<RawIMessage>(`/messages/${messageId}`,
+      options?.agentIdentityId ? { agent_identity_id: options.agentIdentityId } : undefined);
+    return parseIMessage(data);
+  }
+
   /**
    * Return the active triage line and the connect command.
    *
@@ -136,6 +143,8 @@ export class IMessagesResource {
    * @param options.agentIdentityId - Identity to send as. Required for
    *   org-wide API keys when sending by `to`; ignored for
    *   identity-scoped keys (the key's identity wins).
+   * @param options.idempotencyKey - Reuse across calls with identical input;
+   *   otherwise a key is generated per call and retained during request retries.
    *
    * @throws {InkboxAPIError} 400 when the identity is not
    *   iMessage-enabled; 403 when the recipient is blocked by a contact

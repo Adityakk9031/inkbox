@@ -37,6 +37,8 @@ export class TextsResource {
    *   The server resolves it to that conversation's participants.
    * @param options.text - Message body.
    * @param options.mediaUrls - MMS media URLs.
+   * @param options.idempotencyKey - Reuse across calls with identical input;
+   *   otherwise a key is generated per call and retained during request retries.
    *
    * @throws {RecipientBlockedError} when the destination is blocked by an
    *   outbound contact rule on the sender.

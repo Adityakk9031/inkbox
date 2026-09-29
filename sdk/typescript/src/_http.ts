@@ -8,6 +8,8 @@ import { parseAgentSupport } from "./error-guidance.js";
 import { observeResponse, notifyResponseObservers, type ResponseObserver } from "./response_metadata.js";
 
 export class InkboxError extends Error {
+  /** Original message request key, when this error came from a send. */
+  idempotencyKey?: string;
   constructor(message: string) {
     super(message);
     this.name = "InkboxError";

@@ -1036,7 +1036,9 @@ key during bounded request retries. Use `--idempotency-key <key>` to retry the
 same message across separate command invocations. Do not change its input.
 Use `send-lookup --help` to recover an original message ID without sending again.
 Queued success is not delivery confirmation; use the message's get command for
-current status. Inkbox handles safe delivery retries after accepting the message.
+current status. A queued response is acceptance, not a promise of delivery retries.
+Send failures include the request key in stderr (`error.idempotencyKey` with `--json`).
+Read an iMessage with `imessage get <message-id> --identity <handle>`.
 
 ## License
 

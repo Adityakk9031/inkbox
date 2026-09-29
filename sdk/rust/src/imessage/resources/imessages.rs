@@ -29,6 +29,15 @@ impl IMessagesResource {
         Self { http }
     }
 
+    /// Read a visible message and its current delivery status.
+    pub fn get(&self, message_id: &Uuid, agent_identity_id: Option<&Uuid>) -> Result<IMessage> {
+        let params = agent_identity_id
+            .map(|id| vec![("agent_identity_id", id.to_string())])
+            .unwrap_or_default();
+        let data = self.http.get(&format!("/messages/{message_id}"), &params)?;
+        Ok(serde_json::from_value(data)?)
+    }
+
     /// Return the active triage line and the connect command.
     ///
     /// Recipients text the returned `connect_command` (e.g.
@@ -665,6 +674,28 @@ mod tests {
             "created_at": "2026-07-22T00:00:00Z",
             "updated_at": "2026-07-22T00:00:00Z"
         })
+    }
+
+    #[test]
+    fn get_message_uses_the_identity_filter() {
+        let server = MockServer::start();
+        let message_id = Uuid::parse_str("22222222-2222-2222-2222-222222222222").unwrap();
+        let identity_id = Uuid::new_v4();
+        let request = server.mock(|when, then| {
+            when.method(GET)
+                .path(format!("/api/v1/imessage/messages/{message_id}"))
+                .query_param("agent_identity_id", identity_id.to_string());
+            then.status(200).json_body(group_message_json());
+        });
+        assert_eq!(
+            client(&server)
+                .imessages()
+                .get(&message_id, Some(&identity_id))
+                .unwrap()
+                .id,
+            message_id
+        );
+        request.assert();
     }
 
     #[test]
