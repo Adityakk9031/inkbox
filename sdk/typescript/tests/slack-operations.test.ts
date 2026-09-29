@@ -54,6 +54,7 @@ function calls(s: Inkbox["slack"]): Record<string, () => Promise<unknown>> {
       s.updateArchiveSettings(C, {
         retentionDays: null,
       }),
+    list_conversation_previews: () => s.listArchivedMessages(C, { latestPerConversation: true, limit: 25 }),
     list_archived_messages: () =>
       s.listArchivedMessages(C, {
         conversationId: "C123",

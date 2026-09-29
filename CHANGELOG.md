@@ -6,6 +6,12 @@ Versions move in lockstep across `@inkbox/sdk` (TypeScript), `inkbox`
 
 ## Unreleased
 
+- Add `latest_per_conversation` to retained Slack message reads, with matching
+  `latestPerConversation` and `--latest-per-conversation` options. Conversation
+  lists paginate one latest matching message per conversation. Existing reads
+  still return individual messages. Rust struct literals for
+  `SlackArchiveMessagesOptions` need the new field or `..Default::default()`.
+
 - Add identity-level Slack enablement to creation, updates, and identity responses,
   with matching SDK and CLI options. Existing calls leave the setting unchanged.
 

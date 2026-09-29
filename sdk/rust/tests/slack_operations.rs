@@ -78,6 +78,14 @@ fn invoke(client: &Inkbox, name: &str, data: &Value) -> Value {
                 ..Default::default()
             }
         )),
+        "list_conversation_previews" => v!(s.list_archived_messages(
+            c,
+            &SlackArchiveMessagesOptions {
+                latest_per_conversation: Some(true),
+                limit: Some(25),
+                ..Default::default()
+            }
+        )),
         "list_archived_messages" => v!(s.list_archived_messages(
             c,
             &SlackArchiveMessagesOptions {
@@ -86,7 +94,8 @@ fn invoke(client: &Inkbox, name: &str, data: &Value) -> Value {
                 before_ts: Some("1234567891.000000".into()),
                 after_ts: Some("1234567889.000000".into()),
                 limit: Some(2),
-                cursor: Some("opaque".into())
+                cursor: Some("opaque".into()),
+                ..Default::default()
             }
         )),
         "search_archived_messages" => v!(s.search_archived_messages(

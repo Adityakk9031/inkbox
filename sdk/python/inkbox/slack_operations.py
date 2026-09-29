@@ -528,7 +528,9 @@ class SlackOperationsMixin:
         after_ts: str | None = None,
         cursor: str | None = None,
         limit: int = 50,
+        latest_per_conversation: bool | None = None,
     ) -> SlackArchiveMessagesResponse:
+        """List retained messages, optionally the latest match per conversation."""
         return self._archive_messages(
             f"{_base(connection_id)}/archive/messages",
             {
@@ -538,6 +540,7 @@ class SlackOperationsMixin:
                 "after_ts": after_ts,
                 "cursor": cursor,
                 "limit": limit,
+                "latest_per_conversation": latest_per_conversation,
             },
         )
 

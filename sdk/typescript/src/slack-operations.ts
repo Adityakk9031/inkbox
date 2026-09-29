@@ -118,6 +118,8 @@ export interface SlackArchiveCoverageResponse {
   nextCursor: string | null;
 }
 export interface SlackArchiveMessagesOptions extends SlackPageOptions {
+  /** Return the latest matching message per conversation; limit counts conversations. */
+  latestPerConversation?: boolean;
   conversationId?: string;
   threadTs?: string | null;
   beforeTs?: string | null;
@@ -125,7 +127,7 @@ export interface SlackArchiveMessagesOptions extends SlackPageOptions {
 }
 export interface SlackArchiveSearchOptions extends Omit<
   SlackArchiveMessagesOptions,
-  "threadTs"
+  "threadTs" | "latestPerConversation"
 > {
   userId?: string;
 }
@@ -529,7 +531,7 @@ export class SlackOperationsResource {
   private async archiveMessages(
     path: string,
     options: SlackArchiveMessagesOptions,
-    extra: Record<string, string | null | undefined> = {},
+    extra: Record<string, string | boolean | null | undefined> = {},
   ): Promise<SlackArchiveMessagesResponse> {
     const r = await this.http.get<{
       messages: Wire<SlackArchivedMessage>[];
@@ -554,7 +556,9 @@ export class SlackOperationsResource {
     connectionId: string,
     options: SlackArchiveMessagesOptions = {},
   ): Promise<SlackArchiveMessagesResponse> {
-    return this.archiveMessages(`${base(connectionId)}/archive/messages`, options);
+    return this.archiveMessages(`${base(connectionId)}/archive/messages`, options, {
+      latest_per_conversation: options.latestPerConversation,
+    });
   }
   async searchArchivedMessages(
     connectionId: string,

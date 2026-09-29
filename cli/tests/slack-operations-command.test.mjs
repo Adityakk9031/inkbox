@@ -96,6 +96,7 @@ function commands(file) {
       "--retention-days",
       "null",
     ],
+    list_conversation_previews: ["archive", "messages", ...conn, "--latest-per-conversation", "--limit", "25"],
     list_archived_messages: [
       "archive",
       "messages",

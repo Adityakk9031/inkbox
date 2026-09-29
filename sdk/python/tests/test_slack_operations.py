@@ -75,6 +75,9 @@ def calls(s):
         "update_archive_settings": lambda: s.update_archive_settings(
             C, retention_days=None
         ),
+        "list_conversation_previews": lambda: s.list_archived_messages(
+            C, latest_per_conversation=True, limit=25
+        ),
         "list_archived_messages": lambda: s.list_archived_messages(
             C,
             conversation_id="C123",

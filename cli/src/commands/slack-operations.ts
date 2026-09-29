@@ -286,10 +286,9 @@ export function registerSlackOperationCommands(
       .option("--before-ts <timestamp>", "Exclusive upper timestamp")
       .option("--after-ts <timestamp>", "Exclusive lower timestamp");
   action(
-    filters(archive.command("messages")).option(
-      "--thread-ts <timestamp>",
-      "Thread filter (requires conversation)",
-    ),
+    filters(archive.command("messages"))
+      .option("--thread-ts <timestamp>", "Thread filter (requires conversation)")
+      .option("--latest-per-conversation", "Return one latest message per conversation"),
     (s, o) => s.listArchivedMessages(o.connectionId, o),
   );
   action(

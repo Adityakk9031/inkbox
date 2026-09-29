@@ -192,6 +192,8 @@ pub struct SlackArchiveCoverageResponse {
 }
 #[derive(Debug, Clone, Default)]
 pub struct SlackArchiveMessagesOptions {
+    /// Return the latest matching message per conversation; limit counts conversations.
+    pub latest_per_conversation: Option<bool>,
     pub conversation_id: Option<String>,
     pub thread_ts: Option<String>,
     pub before_ts: Option<String>,
@@ -540,6 +542,9 @@ impl SlackResource {
         options: &SlackArchiveMessagesOptions,
     ) -> Result<SlackArchiveMessagesResponse> {
         let mut params = vec![("limit", options.limit.unwrap_or(50).to_string())];
+        if let Some(latest) = options.latest_per_conversation {
+            params.push(("latest_per_conversation", latest.to_string()));
+        }
         for (key, value) in [
             ("conversation_id", &options.conversation_id),
             ("thread_ts", &options.thread_ts),
