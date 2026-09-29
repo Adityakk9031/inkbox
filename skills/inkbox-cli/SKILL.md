@@ -343,8 +343,10 @@ active carrier leg yet) surfaces the server's 409.
 
 For keypad input on a live client-driven call, the agent sends
 `{"event": "dtmf", "digits": "1"}` through the call's media WebSocket. Each event
-accepts one to 30 keys from `0-9`, `*`, and `#`, in order. No acknowledgment is
-sent; wait for the menu's response before another burst. Do not retry blindly.
+accepts one to 30 keys from `0-9`, `*`, and `#`, in order. At most 20 bursts per
+call can be outstanding, including the one being sent; further bursts are ignored.
+No acknowledgment is sent; wait for the menu's response before another burst.
+Do not retry blindly.
 
 ## Text Messages
 

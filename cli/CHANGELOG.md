@@ -4,7 +4,8 @@
 
 - Documented the media WebSocket `dtmf` event for live client-driven calls:
   `{"event": "dtmf", "digits": "1"}` sends one to 30 keypad keys from `0-9`,
-  `*`, and `#`, in order.
+  `*`, and `#`, in order. At most 20 bursts per call can be outstanding,
+  including the one being sent; further bursts are ignored.
 
 ## 0.7.8 — Identity-owned webhook subscriptions
 
