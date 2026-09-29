@@ -62,7 +62,7 @@ export interface SlackMessageContextResponse {
   messages: Record<string, unknown>[];
   nextCursor: string | null;
   hasMore: boolean;
-  window: "messages_at_or_before_timestamp";
+  window: "messages_at_or_before_timestamp" | "messages_at_or_after_timestamp";
   complete: false;
 }
 export interface SlackPermalinkResponse {

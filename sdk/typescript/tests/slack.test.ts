@@ -343,3 +343,25 @@ it.each(["send", "reaction"])(
     expect(fetch).toHaveBeenCalledTimes(1);
   },
 );
+
+
+it.each([
+  { threadTs: undefined, window: "messages_at_or_before_timestamp" },
+  { threadTs: "1780000000.000000", window: "messages_at_or_after_timestamp" },
+])("preserves context direction $window and thread selection", async ({ threadTs, window }) => {
+  const c = client();
+  const { fetch, reply } = mock();
+  reply({
+    messages: [{ ts: "1780000000.000001", text: "Selected message" }],
+    next_cursor: null, has_more: false, window, complete: false,
+  });
+  const context = await c.slack.messageContext(C, "CEXAMPLE", "1780000000.000001", {
+    limit: 5, threadTs,
+  });
+  expect(context.window).toBe(window);
+  expect(context.messages[0].ts).toBe("1780000000.000001");
+  const url = new URL(String(fetch.mock.calls[0][0]));
+  expect(Object.fromEntries(url.searchParams)).toEqual({
+    limit: "5", ...(threadTs ? { thread_ts: threadTs } : {}),
+  });
+});

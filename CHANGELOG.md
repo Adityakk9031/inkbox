@@ -6,6 +6,10 @@ Versions move in lockstep across `@inkbox/sdk` (TypeScript), `inkbox`
 
 ## Unreleased
 
+- Preserve the direction of bounded Slack message context: channel reads include
+  messages at or before the target; thread reads include the target and following
+  replies. `window` reports either direction. Rust keeps its existing string field.
+
 - Document bounded app preparation before invitation creation, coordinated package and
   skills availability, and typed Slack idempotency conflicts.
 

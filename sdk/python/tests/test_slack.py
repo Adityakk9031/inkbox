@@ -305,3 +305,24 @@ def test_slack_conflicts_preserve_typed_error_without_repeating_write(wire, oper
     assert caught.value.status_code == 409
     assert "another request" in caught.value.message
     assert len(requests) == 1
+
+
+@pytest.mark.parametrize("thread_ts,window", [
+    (None, "messages_at_or_before_timestamp"),
+    ("1780000000.000000", "messages_at_or_after_timestamp"),
+])
+def test_context_preserves_direction_and_thread_selection(wire, thread_ts, window):
+    client, requests, replies = wire
+    replies.append({
+        "messages": [{"ts": "1780000000.000001", "text": "Selected message"}],
+        "next_cursor": None, "has_more": False, "window": window, "complete": False,
+    })
+    context = client.slack.message_context(
+        C, "CEXAMPLE", "1780000000.000001", limit=5, thread_ts=thread_ts
+    )
+    assert context.window == window
+    assert context.messages[0]["ts"] == "1780000000.000001"
+    expected = {"limit": "5"}
+    if thread_ts is not None:
+        expected["thread_ts"] = thread_ts
+    assert dict(requests[0].url.params) == expected

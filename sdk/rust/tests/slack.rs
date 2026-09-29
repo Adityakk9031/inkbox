@@ -417,3 +417,48 @@ fn slack_conflicts_preserve_typed_error_without_repeating_writes() {
     }
     conflict.assert_hits(2);
 }
+
+#[test]
+fn context_preserves_direction_and_thread_selection() {
+    for (thread_ts, window) in [
+        (None, "messages_at_or_before_timestamp"),
+        (Some("1780000000.000000"), "messages_at_or_after_timestamp"),
+    ] {
+        let server = MockServer::start();
+        let client = Inkbox::builder("synthetic-test-key")
+            .base_url(server.base_url())
+            .build()
+            .unwrap();
+        let connection = id("22222222-2222-4222-8222-222222222222");
+        let request = server.mock(|when, then| {
+            let when = when
+                .method(GET)
+                .path(format!(
+                    "/api/v1/slack/connections/{connection}/conversations/CEXAMPLE/messages/1780000000.000001/context"
+                ))
+                .query_param("limit", "5");
+            if let Some(root) = thread_ts {
+                when.query_param("thread_ts", root);
+            }
+            then.status(200).json_body(json!({
+                "messages": [{"ts": "1780000000.000001", "text": "Selected message"}],
+                "next_cursor": null, "has_more": false, "window": window, "complete": false
+            }));
+        });
+        let context = client
+            .slack()
+            .message_context(
+                connection,
+                "CEXAMPLE",
+                "1780000000.000001",
+                &inkbox::SlackMessageContextOptions {
+                    thread_ts: thread_ts.map(String::from),
+                    limit: Some(5),
+                },
+            )
+            .unwrap();
+        assert_eq!(context.window, window);
+        assert_eq!(context.messages[0]["ts"], "1780000000.000001");
+        request.assert();
+    }
+}

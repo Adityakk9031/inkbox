@@ -86,9 +86,9 @@ class SlackMessageContextResponse:
     messages: list[dict[str, Any]]
     next_cursor: str | None = None
     has_more: bool = False
-    window: Literal["messages_at_or_before_timestamp"] = (
-        "messages_at_or_before_timestamp"
-    )
+    window: Literal[
+        "messages_at_or_before_timestamp", "messages_at_or_after_timestamp"
+    ] = "messages_at_or_before_timestamp"
     complete: Literal[False] = False
 
 
