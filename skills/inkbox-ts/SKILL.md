@@ -356,6 +356,14 @@ for (const t of segments) {
   console.log(`[${t.party}] ${t.text}`);   // party: "local" or "remote"
 }
 
+// To press keypad keys during a client-driven call, send this JSON
+// through the call's media WebSocket: {"event": "dtmf", "digits": "1"}
+// Each event accepts 1-30 keys from 0-9, *, and #, in order.
+// At most 20 bursts per call can be outstanding, including the one
+// being sent; further bursts are ignored.
+// No acknowledgment is sent; wait for the menu's response before another
+// burst. Do not retry blindly.
+
 // Hang up a live call from outside it (teardown confirms asynchronously,
 // so the returned call can still show its live status; already-ended
 // calls surface the server's 409)
