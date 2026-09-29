@@ -164,6 +164,16 @@ class TestCallsGet:
         assert call.ended_at is not None
 
 
+class TestCallsSendDtmf:
+    def test_posts_digits_and_returns_them(self, client, transport):
+        transport.post.return_value = {"call_id": CALL_ID, "digits": "12#"}
+
+        digits = client._calls.send_dtmf(CALL_ID, "12#")
+
+        transport.post.assert_called_once_with(f"/calls/{CALL_ID}/dtmf", json={"digits": "12#"})
+        assert digits == "12#"
+
+
 class TestCallsHangup:
     def test_posts_hangup_and_returns_call(self, client, transport):
         # Teardown is async at the carrier: the row can come back still live.

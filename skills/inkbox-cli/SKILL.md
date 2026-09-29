@@ -285,6 +285,7 @@ inkbox phone call -i <handle> --to +15551234567 --hosted --reason "..." --on-voi
 inkbox phone call -i <handle> --to +15551234567 --origination shared_imessage_number
 inkbox phone calls -i <handle> --limit 10 --offset 0
 inkbox phone hangup <call-id> -i <handle>
+inkbox phone dtmf <call-id> -i <handle> --digits 1   # press keypad keys (0-9, *, #) on a live call
 inkbox phone transcripts <call-id> -i <handle>
 inkbox phone search-transcripts -i <handle> -q "refund" --party remote
 inkbox phone incoming-action -i <handle>                       # print the incoming-call config
@@ -340,6 +341,11 @@ its existing `--instructions` when changing only the voice.
 confirms the teardown asynchronously, so the printed call can still show
 its live status for a moment; a call that has already ended (or has no
 active carrier leg yet) surfaces the server's 409.
+
+`inkbox phone dtmf <call-id> --digits <keys>` presses one to 30 keypad keys
+(`0-9`, `*`, `#`) on a live client-driven call from outside it, for automated
+phone menus and extensions. Voice AI calls press keys on their own from the
+task brief. Already-ended calls surface the server's 409.
 
 ## Text Messages
 

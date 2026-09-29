@@ -317,6 +317,25 @@ export function registerPhoneCommands(program: Command): void {
     );
 
   phone
+    .command("dtmf <call-id>")
+    .description("Press keypad digits on a live call (0-9, *, #)")
+    .requiredOption("-i, --identity <handle>", "Agent identity handle")
+    .requiredOption("--digits <digits>", "One to 30 keys from 0-9, * and #")
+    .action(
+      withErrorHandler(async function (
+        this: Command,
+        callId: string,
+        cmdOpts: { identity: string; digits: string },
+      ) {
+        const opts = getGlobalOpts(this);
+        const inkbox = createClient(opts);
+        const identity = await inkbox.getIdentity(cmdOpts.identity);
+        const digits = await identity.sendDtmf(callId, cmdOpts.digits);
+        output({ id: callId, digits }, { json: !!opts.json });
+      }),
+    );
+
+  phone
     .command("search-transcripts")
     .description("Search call transcripts")
     .requiredOption("-i, --identity <handle>", "Agent identity handle")

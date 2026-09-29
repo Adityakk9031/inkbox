@@ -184,6 +184,19 @@ describe("CallsResource.hangup", () => {
   });
 });
 
+describe("CallsResource.sendDtmf", () => {
+  it("posts the digits and returns them", async () => {
+    const http = mockHttp();
+    vi.mocked(http.post).mockResolvedValue({ call_id: CALL_ID, digits: "12#" });
+    const res = new CallsResource(http);
+
+    const digits = await res.sendDtmf(CALL_ID, "12#");
+
+    expect(http.post).toHaveBeenCalledWith(`/calls/${CALL_ID}/dtmf`, { digits: "12#" });
+    expect(digits).toBe("12#");
+  });
+});
+
 describe("CallsResource.transcripts", () => {
   it("returns transcript segments for a call", async () => {
     const http = mockHttp();
@@ -633,6 +646,7 @@ describe("CallsResource surface (identity-centered, v1.0.0)", () => {
       "hangup",
       "list",
       "place",
+      "sendDtmf",
       "toolInvocations",
       "transcripts",
     ]);

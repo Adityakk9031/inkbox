@@ -9,7 +9,7 @@ use crate::filters::DateRangeFilter;
 use crate::http::HttpTransport;
 use crate::phone::types::{
     CallOrigin, CallPlacementOptions, HostedAgentAuthorityMode, HostedAgentToolInvocationPage,
-    HostedCallPlacementOptions, PhoneCall, PhoneCallWithRateLimit, PhoneTranscript,
+    HostedCallPlacementOptions, PhoneCall, PhoneCallWithRateLimit, PhoneTranscript, SendDtmfResponse,
 };
 
 pub struct CallsResource {
@@ -117,6 +117,31 @@ impl CallsResource {
             crate::http::NO_QUERY,
         )?;
         Ok(serde_json::from_value(data)?)
+    }
+
+    /// Press keypad digits on a live call, from outside the call.
+    ///
+    /// The keys go out as carrier touch-tones on the live leg, in order, so a
+    /// client-driven call can work an automated phone menu. An agent on the
+    /// media WebSocket can press the same keys in-band with
+    /// `{"event": "dtmf", "digits": "1"}`. A call that has already ended (or
+    /// has no active carrier leg yet) surfaces the server's 409 verbatim; an
+    /// unconfirmed command surfaces its 503.
+    ///
+    /// # Arguments
+    /// * `call_id` - UUID (or string) of the call.
+    /// * `digits` - One to 30 keys from `0-9`, `*` and `#`.
+    ///
+    /// # Returns
+    /// The digits as sent.
+    pub fn send_dtmf(&self, call_id: &str, digits: &str) -> Result<String> {
+        let data = self.http.post(
+            &format!("/calls/{call_id}/dtmf"),
+            Some(&serde_json::json!({ "digits": digits })),
+            crate::http::NO_QUERY,
+        )?;
+        let sent: SendDtmfResponse = serde_json::from_value(data)?;
+        Ok(sent.digits)
     }
 
     /// List all transcript segments for a call, ordered by sequence number.
@@ -563,6 +588,26 @@ mod tests {
         );
         assert_eq!(page.limit, 25);
         assert!(page.has_more);
+    }
+
+    #[test]
+    fn send_dtmf_posts_digits_and_returns_them() {
+        let server = MockServer::start();
+        let mock = server.mock(|when, then| {
+            when.method(POST)
+                .path("/api/v1/phone/calls/22222222-2222-2222-2222-222222222222/dtmf")
+                .json_body(json!({ "digits": "12#" }));
+            then.status(200).json_body(json!({
+                "call_id": "22222222-2222-2222-2222-222222222222",
+                "digits": "12#"
+            }));
+        });
+        let digits = client(&server)
+            .calls()
+            .send_dtmf("22222222-2222-2222-2222-222222222222", "12#")
+            .unwrap();
+        mock.assert();
+        assert_eq!(digits, "12#");
     }
 
     #[test]

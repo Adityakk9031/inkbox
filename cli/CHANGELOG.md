@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.7.9 — Keypad digits on client-driven calls
+
+- `inkbox phone dtmf <call-id> -i <handle> --digits <keys>` presses one to 30 keypad keys
+  (`0-9`, `*`, `#`) on a live call from outside it. Already-ended calls surface the
+  server's `409`; an unconfirmed command surfaces `503`.
+
 ## 0.7.8 — Identity-owned webhook subscriptions
 
 - Combine all notification families on one identity, regardless of configured channels;

@@ -227,6 +227,43 @@ test("incoming-action forward sends one complete SIP destination", async () => {
   }
 });
 
+test("dtmf posts the digits for the identity's call and prints them", async () => {
+  const requests = [];
+  const mock = await listen((req, res) => {
+    let body = "";
+    req.setEncoding("utf8");
+    req.on("data", (chunk) => { body += chunk; });
+    req.on("end", () => {
+      requests.push({ method: req.method, url: req.url, body: body ? JSON.parse(body) : null });
+      res.writeHead(200, { "Content-Type": "application/json" });
+      if (req.url === "/api/v1/identities/support-bot") {
+        res.end(JSON.stringify(IDENTITY));
+        return;
+      }
+      res.end(JSON.stringify({ call_id: "22222222-2222-2222-2222-222222222222", digits: "12#" }));
+    });
+  });
+
+  try {
+    const result = await runCli([
+      "--api-key", "test-key",
+      "--base-url", `http://127.0.0.1:${mock.port}`,
+      "--json", "phone", "dtmf", "22222222-2222-2222-2222-222222222222",
+      "-i", "support-bot", "--digits", "12#",
+    ]);
+    assert.ifError(result.error);
+    assert.deepEqual(requests[1], {
+      method: "POST",
+      url: "/api/v1/phone/calls/22222222-2222-2222-2222-222222222222/dtmf",
+      body: { digits: "12#" },
+    });
+    assert.deepEqual(JSON.parse(result.stdout), { id: "22222222-2222-2222-2222-222222222222", digits: "12#" });
+    assert.match(help("phone", "dtmf"), /--digits <digits>/);
+  } finally {
+    mock.server.close();
+  }
+});
+
 test("buildPlaceCallOptions disables voicemail detection only when requested", () => {
   const result = buildPlaceCallOptions({
     identity: "support-bot",

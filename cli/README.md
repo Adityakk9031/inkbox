@@ -400,6 +400,9 @@ inkbox phone calls -i <handle>               # List calls
 
 inkbox phone hangup <call-id> -i <handle>    # Hang up a live call from outside it
 
+inkbox phone dtmf <call-id> -i <handle>      # Press keypad keys on a live call (0-9, *, #)
+  --digits <keys>                            #   One to 30 keys, pressed in order
+
 inkbox phone transcripts <call-id> -i <handle>  # Get call transcripts
 
 inkbox phone tool-activity <call-id> -i <handle> # List paginated Voice AI tool activity

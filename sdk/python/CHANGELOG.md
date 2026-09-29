@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.7.9 — Keypad digits on client-driven calls
+
+- `identity.send_dtmf(call_id, digits)` presses one to 30 keypad keys (`0-9`, `*`, `#`)
+  on a live call from outside it and returns the digits as sent. Already-ended calls
+  surface the server's `409`; an unconfirmed command surfaces `503`. An agent on the
+  media WebSocket can press the same keys in-band with `{"event": "dtmf", "digits": "1"}`.
+
 ## 0.7.8 — Identity-owned webhook subscriptions
 
 - Combine all notification families on one identity, regardless of configured channels;

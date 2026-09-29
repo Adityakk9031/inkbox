@@ -99,6 +99,28 @@ export class CallsResource {
   }
 
   /**
+   * Press keypad digits on a live call, from outside the call.
+   *
+   * The keys go out as carrier touch-tones on the live leg, in order, so a
+   * client-driven call can work an automated phone menu. An agent on the
+   * media WebSocket can press the same keys in-band with
+   * `{"event": "dtmf", "digits": "1"}`. A call that has already ended (or has
+   * no active carrier leg yet) surfaces the server's 409 verbatim; an
+   * unconfirmed command surfaces its 503.
+   *
+   * @param callId - UUID of the call.
+   * @param digits - One to 30 keys from `0-9`, `*` and `#`.
+   * @returns The digits as sent.
+   */
+  async sendDtmf(callId: string, digits: string): Promise<string> {
+    const data = await this.http.post<{ call_id: string; digits: string }>(
+      `/calls/${callId}/dtmf`,
+      { digits },
+    );
+    return data.digits;
+  }
+
+  /**
    * List all transcript segments for a call, ordered by sequence number.
    *
    * @param callId - UUID of the call.

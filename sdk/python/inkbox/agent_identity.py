@@ -987,6 +987,18 @@ class AgentIdentity:
         """
         return self._inkbox._calls.hangup(call_id)
 
+    def send_dtmf(self, call_id: str, digits: str) -> str:
+        """Press keypad digits on one of this identity's live calls, from outside the call.
+
+        Args:
+            call_id: ID of the live call.
+            digits: One to 30 keys from ``0-9``, ``*`` and ``#``.
+
+        Returns:
+            The digits as sent.
+        """
+        return self._inkbox._calls.send_dtmf(call_id, digits)
+
     def get_hosted_agent_config(self) -> HostedAgentConfig:
         """Get this identity's Inkbox Voice AI config."""
         return self._inkbox._hosted_agent.get_config(agent_identity_id=self.id)

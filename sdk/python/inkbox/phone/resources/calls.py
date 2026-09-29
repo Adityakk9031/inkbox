@@ -110,6 +110,26 @@ class CallsResource:
         data = self._http.post(f"/calls/{call_id}/hangup")
         return PhoneCall._from_dict(data)
 
+    def send_dtmf(self, call_id: UUID | str, digits: str) -> str:
+        """Press keypad digits on a live call, from outside the call.
+
+        The keys go out as carrier touch-tones on the live leg, in order,
+        so a client-driven call can work an automated phone menu. An agent
+        on the media WebSocket can press the same keys in-band with
+        ``{"event": "dtmf", "digits": "1"}``. A call that has already
+        ended (or has no active carrier leg yet) surfaces the server's 409
+        verbatim; an unconfirmed command surfaces its 503.
+
+        Args:
+            call_id: UUID of the call.
+            digits: One to 30 keys from ``0-9``, ``*`` and ``#``.
+
+        Returns:
+            The digits as sent.
+        """
+        data = self._http.post(f"/calls/{call_id}/dtmf", json={"digits": digits})
+        return str(data["digits"])
+
     def transcripts(self, call_id: UUID | str) -> list[PhoneTranscript]:
         """List all transcript segments for a call, ordered by sequence number.
 

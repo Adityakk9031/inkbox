@@ -1067,6 +1067,12 @@ impl AgentIdentity {
         self.inkbox.calls().hangup(call_id)
     }
 
+    /// Press keypad digits (`0-9`, `*`, `#`; one to 30 keys) on one of this
+    /// identity's live calls, from outside the call. Returns the digits as sent.
+    pub fn send_dtmf(&self, call_id: &str, digits: &str) -> Result<String> {
+        self.inkbox.calls().send_dtmf(call_id, digits)
+    }
+
     /// Get this identity's inbound-call handling config.
     pub fn get_incoming_call_action(&self) -> Result<IncomingCallActionConfig> {
         self.inkbox

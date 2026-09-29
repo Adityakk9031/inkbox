@@ -356,6 +356,10 @@ for t in identity.list_transcripts(calls[0].id):
 # calls surface the server's 409)
 call = identity.hangup_call(calls[0].id)
 
+# Press keypad digits on a live client-driven call from outside it (0-9, *, #;
+# 1-30 keys). Voice AI calls press keys on their own from the task brief.
+digits = identity.send_dtmf(calls[0].id, "1")
+
 # Organization-scoped voice discovery; no identity ID is needed.
 # Entries include id, name, description, available, and optional preview_url.
 # Keep unavailable entries for display; do not hardcode a voice allowlist.
