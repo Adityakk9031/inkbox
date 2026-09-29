@@ -1,13 +1,10 @@
 # Changelog
 
-## 0.7.9 — Keypad digits on client-driven calls
+## 0.7.9 — Media WebSocket keypad guidance
 
-- `identity.send_dtmf(call_id, digits)` presses one to 30 keypad keys (`0-9`, `*`, `#`)
-  on a live call from outside it and returns the digits as sent. Already-ended calls
-  surface the server's `409`; an unconfirmed command surfaces `503`. An agent on the
-  media WebSocket can press the same keys in-band with `{"event": "dtmf", "digits": "1"}`.
-- Pass `idempotency_key="menu-choice-1"` on the first attempt, then reuse that key
-  and digits when retrying an unconfirmed command. No automatic retries are performed.
+- Documented the media WebSocket `dtmf` event for live client-driven calls:
+  `{"event": "dtmf", "digits": "1"}` sends one to 30 keypad keys from `0-9`,
+  `*`, and `#`, in order.
 
 ## 0.7.8 — Identity-owned webhook subscriptions
 

@@ -4,18 +4,11 @@ All notable changes to the Inkbox SDK, CLI, and skills live here.
 Versions move in lockstep across `@inkbox/sdk` (TypeScript), `inkbox`
 (Python), `@inkbox/cli`, `inkbox` (Rust, crates.io), and the bundled plugin.
 
-## 0.7.9 — Keypad digits on client-driven calls
+## 0.7.9 — Media WebSocket keypad guidance
 
-- `send_dtmf(call_id, digits)` (Python), `sendDtmf(callId, digits)` (TypeScript),
-  `send_dtmf(call_id, digits)` (Rust) and `inkbox phone dtmf <call-id> --digits <keys>`
-  press one to 30 keypad keys (`0-9`, `*`, `#`) on a live call from outside it, via
-  `POST /phone/calls/{call_id}/dtmf`. An agent on the media WebSocket can press the same
-  keys in-band with `{"event": "dtmf", "digits": "1"}`.
-- Already-ended calls surface the server's `409`; an unconfirmed command surfaces `503`.
-- Optional `idempotency_key` (Python), `idempotencyKey` (TypeScript),
-  `send_dtmf_with_idempotency_key` (Rust), and `--idempotency-key` (CLI) let callers
-  retry an unconfirmed command with the same key and digits without pressing twice.
-  No automatic retries are performed.
+- Documented the media WebSocket `dtmf` event for live client-driven calls:
+  `{"event": "dtmf", "digits": "1"}` sends one to 30 keypad keys from `0-9`,
+  `*`, and `#`, in order.
 - Bundled Codex plugin version `0.1.8`.
 
 ## 0.7.8 — Identity-owned webhook subscriptions

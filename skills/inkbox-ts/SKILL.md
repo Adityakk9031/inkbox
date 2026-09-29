@@ -356,12 +356,11 @@ for (const t of segments) {
   console.log(`[${t.party}] ${t.text}`);   // party: "local" or "remote"
 }
 
-// Press keypad digits on a live client-driven call from outside it (0-9, *, #;
-// 1-30 keys, in order). Voice AI calls press keys on their own from the task
-// brief. Do this while the call is live; an ended call answers with a 409.
-// Reuse the same key and digits only to retry an unconfirmed command (503).
-// Use a new key for each intentional repeat; no automatic retries occur.
-const digits = await identity.sendDtmf(calls[0].id, "1", { idempotencyKey: "menu-choice-1" });
+// To press keypad keys during a client-driven call, send this JSON
+// through the call's media WebSocket: {"event": "dtmf", "digits": "1"}
+// Each event accepts 1-30 keys from 0-9, *, and #, in order.
+// No acknowledgment is sent; wait for the menu's response before another
+// burst. Do not retry blindly.
 
 // Hang up a live call from outside it (teardown confirms asynchronously,
 // so the returned call can still show its live status; already-ended

@@ -4,7 +4,7 @@
  * Identity-scoped call operations: list, get, transcripts, place.
  */
 
-import { HttpTransport, validateIdempotencyKey } from "../../_http.js";
+import { HttpTransport } from "../../_http.js";
 import {
   CallMode,
   CallOrigin,
@@ -96,42 +96,6 @@ export class CallsResource {
   async hangup(callId: string): Promise<PhoneCall> {
     const data = await this.http.post<RawPhoneCall>(`/calls/${callId}/hangup`);
     return parsePhoneCall(data);
-  }
-
-  /**
-   * Press keypad digits on a live call, from outside the call.
-   *
-   * The keys go out as carrier touch-tones on the live leg, in order, so a
-   * client-driven call can work an automated phone menu. An agent on the
-   * media WebSocket can press the same keys in-band with the `dtmf` event
-   * (see https://inkbox.ai/docs/api/phone/media-stream). A call that has
-   * already ended, or is not answered yet, surfaces the server's 409
-   * verbatim; a command the carrier did not confirm in time surfaces its
-   * 503, and the keys may still have landed.
-   *
-   * @param callId - UUID of the call.
-   * @param digits - One to 30 keys from `0-9`, `*` and `#`.
-   * @param options.idempotencyKey - Optional 1–255 character key for this command.
-   *   Reuse the same key and digits when retrying an unconfirmed command; use a
-   *   new key for each intentional repeat. No automatic retries are performed.
-   * @returns The digits as sent.
-   */
-  async sendDtmf(
-    callId: string,
-    digits: string,
-    options: { idempotencyKey?: string } = {},
-  ): Promise<string> {
-    let requestOptions: { headers: Record<string, string> } | undefined;
-    if (options.idempotencyKey !== undefined) {
-      validateIdempotencyKey(options.idempotencyKey);
-      requestOptions = { headers: { "Idempotency-Key": options.idempotencyKey } };
-    }
-    const data = await this.http.post<{ call_id: string; digits: string }>(
-      `/calls/${callId}/dtmf`,
-      { digits },
-      ...(requestOptions ? [requestOptions] : []),
-    );
-    return data.digits;
   }
 
   /**

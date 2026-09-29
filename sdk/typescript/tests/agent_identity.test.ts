@@ -82,7 +82,6 @@ function mockInkbox() {
     _threads: { get: vi.fn() },
     _numbers: { provision: vi.fn() },
     _calls: {
-      sendDtmf: vi.fn(),
       place: vi.fn(),
       list: vi.fn(),
       transcripts: vi.fn(),
@@ -131,17 +130,6 @@ describe("AgentIdentity properties", () => {
     expect(identity.mailbox).toBeNull();
     expect(identity.phoneNumber).toBeNull();
     expect(identity.imessageNumber).toBeNull();
-  });
-});
-
-describe("AgentIdentity.sendDtmf", () => {
-  it.each([undefined, "menu-choice-1"])("delegates the optional key: %s", async (key) => {
-    const ink = mockInkbox();
-    vi.mocked(ink._calls.sendDtmf).mockResolvedValue("12#");
-    const identity = new AgentIdentity(makeData(), ink);
-
-    expect(await identity.sendDtmf("call-id", "12#", { idempotencyKey: key })).toBe("12#");
-    expect(ink._calls.sendDtmf).toHaveBeenCalledWith("call-id", "12#", { idempotencyKey: key });
   });
 });
 

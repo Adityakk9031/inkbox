@@ -285,7 +285,6 @@ inkbox phone call -i <handle> --to +15551234567 --hosted --reason "..." --on-voi
 inkbox phone call -i <handle> --to +15551234567 --origination shared_imessage_number
 inkbox phone calls -i <handle> --limit 10 --offset 0
 inkbox phone hangup <call-id> -i <handle>
-inkbox phone dtmf <call-id> -i <handle> --digits '1*#'   # press keypad keys (0-9, *, #) on a live call; quote * and #
 inkbox phone transcripts <call-id> -i <handle>
 inkbox phone search-transcripts -i <handle> -q "refund" --party remote
 inkbox phone incoming-action -i <handle>                       # print the incoming-call config
@@ -342,17 +341,10 @@ confirms the teardown asynchronously, so the printed call can still show
 its live status for a moment; a call that has already ended (or has no
 active carrier leg yet) surfaces the server's 409.
 
-`inkbox phone dtmf <call-id> -i <handle> --digits <keys>` presses one to 30
-keypad keys (`0-9`, `*`, `#`) on a live client-driven call from outside it, for
-automated phone menus and extensions; quote the keys so `*` and `#` reach the
-CLI. Voice AI calls press keys on their own from the task brief. A call that is
-not answered yet or has already ended surfaces the server's 409; a 503 means the
-carrier did not confirm in time and the keys may still have landed. Supply
-`--idempotency-key <key>` on the first attempt and reuse that key and digits to retry
-an unconfirmed command; use a new key for an intentional repeat. No automatic
-retries occur. Without a key, check the menu's response before pressing again.
-Keys are often an extension or a PIN:
-confirm the sequence with the user before pressing it.
+For keypad input on a live client-driven call, the agent sends
+`{"event": "dtmf", "digits": "1"}` through the call's media WebSocket. Each event
+accepts one to 30 keys from `0-9`, `*`, and `#`, in order. No acknowledgment is
+sent; wait for the menu's response before another burst. Do not retry blindly.
 
 ## Text Messages
 

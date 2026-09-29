@@ -184,65 +184,6 @@ describe("CallsResource.hangup", () => {
   });
 });
 
-describe("CallsResource.sendDtmf", () => {
-  it.each([undefined, "menu-choice-1"])("sends the optional key on the wire: %s", async (key) => {
-    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(
-      JSON.stringify({ call_id: CALL_ID, digits: "12#" }),
-      { status: 200, headers: { "Content-Type": "application/json" } },
-    ));
-    try {
-      const calls = new CallsResource(new HttpTransport("test-key", "https://phone.test"));
-      expect(await calls.sendDtmf(CALL_ID, "12#", { idempotencyKey: key })).toBe("12#");
-      expect(fetchMock).toHaveBeenCalledTimes(1);
-      const [url, request] = fetchMock.mock.calls[0];
-      expect(url).toBe(`https://phone.test/calls/${CALL_ID}/dtmf`);
-      expect(request?.method).toBe("POST");
-      expect(JSON.parse(request?.body as string)).toEqual({ digits: "12#" });
-      expect(new Headers(request?.headers).get("Idempotency-Key")).toBe(key ?? null);
-    } finally {
-      fetchMock.mockRestore();
-    }
-  });
-
-  it.each(["", "x".repeat(256)])("rejects an invalid key before making a request", async (key) => {
-    const http = mockHttp();
-    await expect(new CallsResource(http).sendDtmf(CALL_ID, "1", { idempotencyKey: key }))
-      .rejects.toThrow(RangeError);
-    expect(http.post).not.toHaveBeenCalled();
-  });
-
-  it.each([
-    [409, "call_already_ended"],
-    [409, "call_not_active"],
-    [503, "send_unconfirmed"],
-  ] as const)("preserves %s %s without retrying", async (status, code) => {
-    const detail = { error: code, message: "The keypad command could not be confirmed." };
-    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(
-      JSON.stringify({ detail }),
-      { status, headers: { "Content-Type": "application/json" } },
-    ));
-    try {
-      const calls = new CallsResource(new HttpTransport("test-key", "https://phone.test"));
-      await expect(calls.sendDtmf(CALL_ID, "1", { idempotencyKey: "menu-choice-1" }))
-        .rejects.toMatchObject({ statusCode: status, detail });
-      expect(fetchMock).toHaveBeenCalledTimes(1);
-    } finally {
-      fetchMock.mockRestore();
-    }
-  });
-
-  it("posts the digits and returns them", async () => {
-    const http = mockHttp();
-    vi.mocked(http.post).mockResolvedValue({ call_id: CALL_ID, digits: "12#" });
-    const res = new CallsResource(http);
-
-    const digits = await res.sendDtmf(CALL_ID, "12#");
-
-    expect(http.post).toHaveBeenCalledWith(`/calls/${CALL_ID}/dtmf`, { digits: "12#" });
-    expect(digits).toBe("12#");
-  });
-});
-
 describe("CallsResource.transcripts", () => {
   it("returns transcript segments for a call", async () => {
     const http = mockHttp();
@@ -692,7 +633,6 @@ describe("CallsResource surface (identity-centered, v1.0.0)", () => {
       "hangup",
       "list",
       "place",
-      "sendDtmf",
       "toolInvocations",
       "transcripts",
     ]);

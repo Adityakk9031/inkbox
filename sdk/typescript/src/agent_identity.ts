@@ -712,23 +712,6 @@ export class AgentIdentity {
     return this._inkbox._calls.hangup(callId);
   }
 
-  /**
-   * Press keypad digits on one of this identity's live calls, from outside the call.
-   *
-   * @param callId - ID of the live call.
-   * @param digits - One to 30 keys from `0-9`, `*` and `#`.
-   * @param options.idempotencyKey - Optional key to reuse with the same digits
-   *   when retrying an unconfirmed command. See {@link CallsResource.sendDtmf}.
-   * @returns The digits as sent.
-   */
-  async sendDtmf(
-    callId: string,
-    digits: string,
-    options: { idempotencyKey?: string } = {},
-  ): Promise<string> {
-    return this._inkbox._calls.sendDtmf(callId, digits, options);
-  }
-
   /** Get this identity's Inkbox Voice AI config. */
   async getHostedAgentConfig(): Promise<HostedAgentConfig> {
     return this._inkbox._hostedAgent.getConfig({ agentIdentityId: this.id });

@@ -493,16 +493,6 @@ pub struct PhoneNumber {
     pub filter_mode_change_notice: Option<FilterModeChangeNotice>,
 }
 
-/// Confirmation that the carrier accepted a keypad command
-/// (`POST /calls/{call_id}/dtmf`).
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub(crate) struct SendDtmfResponse {
-    /// The call the keys were pressed on.
-    pub call_id: String,
-    /// The keys as sent.
-    pub digits: String,
-}
-
 /// A phone call record.
 ///
 /// `is_blocked` is `true` when this call was rejected by a contact rule or
