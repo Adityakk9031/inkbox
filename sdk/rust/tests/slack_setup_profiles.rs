@@ -30,14 +30,31 @@ fn setup_uses_one_post_and_old_connections_still_parse() {
     assert_eq!(setup.status, SlackSetupState::Pending);
     assert_eq!(setup.retry_at.as_deref(), Some("2026-10-01T12:00:00Z"));
     create.assert();
-    let old: SlackConnectionsResponse =
-        serde_json::from_value(json!({"connections": [], "installation_available": true})).unwrap();
+    let mut old_response = server.mock(|when, then| {
+        when.method(GET)
+            .path("/api/v1/slack/connections")
+            .query_param("identity_id", identity.to_string());
+        then.status(200)
+            .json_body(json!({"connections": [], "installation_available": true}));
+    });
+    let old: SlackConnectionsResponse = client.slack().list_connections(identity).unwrap();
     assert!(old.setup.is_none());
-    let current: SlackConnectionsResponse = serde_json::from_value(
-        json!({"connections": [], "installation_available": true, "setup": data["setup"]}),
-    )
-    .unwrap();
+    assert!(!old.application_created);
+    old_response.assert();
+    old_response.delete();
+    let current_response = server.mock(|when, then| {
+        when.method(GET)
+            .path("/api/v1/slack/connections")
+            .query_param("identity_id", identity.to_string());
+        then.status(200).json_body(json!({
+            "connections": [], "installation_available": true,
+            "setup": data["setup"], "application_created": true
+        }));
+    });
+    let current = client.slack().list_connections(identity).unwrap();
     assert_eq!(current.setup.unwrap().status, SlackSetupState::Pending);
+    assert!(current.application_created);
+    current_response.assert();
 }
 #[test]
 fn sender_enrichment_and_linked_contacts_remain_optional() {

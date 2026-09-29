@@ -39,6 +39,7 @@ class SlackConnectionsResponse:
     connections: list[SlackConnection]
     installation_available: bool
     setup: SlackSetupStatus | None = None
+    application_created: bool = False
 
 
 @dataclass
@@ -121,6 +122,7 @@ class SlackResource(SlackOperationsMixin):
             [_parse(SlackConnection, r) for r in data["connections"]],
             data["installation_available"],
             _parse(SlackSetupStatus, data["setup"]) if data.get("setup") is not None else None,
+            application_created=data.get("application_created", False),
         )
 
     def start_setup(self, identity_id: UUID | str) -> SlackSetupStatus:

@@ -14,7 +14,7 @@ DATA = json.loads((Path(__file__).parents[3] / "tests/fixtures/slack_setup_profi
 
 def test_setup_request_and_nested_connection_state():
     requests = []
-    replies = [DATA["setup"], {"connections": [], "installation_available": True, "setup": DATA["setup"]},
+    replies = [DATA["setup"], {"connections": [], "installation_available": True, "setup": DATA["setup"], "application_created": True},
                {"connections": [], "installation_available": True}]
     def handle(request):
         requests.append(request)
@@ -28,8 +28,12 @@ def test_setup_request_and_nested_connection_state():
         assert requests[0].method == "POST"
         assert requests[0].url.path == "/api/v1/slack/applications/setup"
         assert json.loads(requests[0].content) == {"identity_id": DATA["identity_id"]}
-        assert client.slack.list_connections(DATA["identity_id"]).setup == setup
-        assert client.slack.list_connections(DATA["identity_id"]).setup is None
+        current = client.slack.list_connections(DATA["identity_id"])
+        assert current.setup == setup
+        assert current.application_created is True
+        old = client.slack.list_connections(DATA["identity_id"])
+        assert old.setup is None
+        assert old.application_created is False
 
 
 def test_contacts_parse_linked_workspaces_and_old_responses():

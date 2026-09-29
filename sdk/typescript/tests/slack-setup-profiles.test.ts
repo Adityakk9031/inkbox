@@ -14,10 +14,14 @@ it("starts setup once and parses nested dates while tolerating legacy responses"
   expect(new URL(String(fetch.mock.calls[0][0])).pathname).toBe("/api/v1/slack/applications/setup");
   expect(fetch.mock.calls[0][1]?.method).toBe("POST");
   expect(JSON.parse(String(fetch.mock.calls[0][1]?.body))).toEqual({ identity_id: data.identity_id });
-  fetch.mockResolvedValueOnce(new Response(JSON.stringify({ connections: [], installation_available: true, setup: data.setup })));
-  expect((await client.slack.listConnections(data.identity_id)).setup).toEqual(setup);
+  fetch.mockResolvedValueOnce(new Response(JSON.stringify({ connections: [], installation_available: true, setup: data.setup, application_created: true })));
+  const current = await client.slack.listConnections(data.identity_id);
+  expect(current.setup).toEqual(setup);
+  expect(current.applicationCreated).toBe(true);
   fetch.mockResolvedValueOnce(new Response(JSON.stringify({ connections: [], installation_available: true })));
-  expect((await client.slack.listConnections(data.identity_id)).setup).toBeNull();
+  const old = await client.slack.listConnections(data.identity_id);
+  expect(old.setup).toBeNull();
+  expect(old.applicationCreated).toBe(false);
 });
 it("parses linked Slack accounts without changing existing contact identifiers", () => {
   expect(parseContact(data.contact).slackAccounts).toEqual([

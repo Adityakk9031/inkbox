@@ -18,6 +18,8 @@ export interface SlackConnectionsResponse {
   connections: SlackConnection[];
   installationAvailable: boolean;
   setup?: SlackSetupStatus | null;
+  /** App existence, independent of identity enablement or workspace connections. */
+  applicationCreated?: boolean;
 }
 export interface SlackSetupStatus {
   status: "not_started" | "pending" | "ready" | "failed" | "unavailable";
@@ -169,11 +171,13 @@ export class SlackResource extends SlackOperationsResource {
       connections: RawConnection[];
       installation_available: boolean;
       setup?: RawSetupStatus | null;
+      application_created?: boolean;
     }>("/slack/connections", { identity_id: identityId });
     return {
       connections: r.connections.map(connection),
       installationAvailable: r.installation_available,
       setup: r.setup ? setupStatus(r.setup) : null,
+      applicationCreated: r.application_created ?? false,
     };
   }
   /** Organization management only; prepare without waiting, then read listConnections for status. */

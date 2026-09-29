@@ -6,6 +6,10 @@ Versions move in lockstep across `@inkbox/sdk` (TypeScript), `inkbox`
 
 ## Unreleased
 
+- Report `application_created` / `applicationCreated` on Slack connection reads,
+  independently of enablement or connected workspaces. Older responses default to
+  `false`. Rust `SlackConnectionsResponse` literals need `application_created`.
+
 - Preserve the direction of bounded Slack message context: channel reads include
   messages at or before the target; thread reads include the target and following
   replies. `window` reports either direction. Rust keeps its existing string field.

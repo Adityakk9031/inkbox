@@ -41,6 +41,9 @@ pub struct SlackConnectionsResponse {
     pub installation_available: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub setup: Option<SlackSetupStatus>,
+    /// App existence, independent of identity enablement or workspace connections.
+    #[serde(default)]
+    pub application_created: bool,
 }
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
