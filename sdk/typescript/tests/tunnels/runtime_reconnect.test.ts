@@ -273,18 +273,22 @@ describe("TunnelRuntime reconnect establishment", () => {
       const runtime = makeRuntime({ helloTimeoutMs: 30 });
       const servePromise = runtime.serveForever();
 
-      await fakeServer.awaitNextIntakePost(2_000);
-      expect(fakeServer.helloCount()).toBeGreaterThanOrEqual(2);
-      expect(fakeServer.acceptedSessionCount()).toBeGreaterThanOrEqual(2);
-      expect(fakeServer.sessionCount()).toBe(1);
-      expect(fakeServer.pendingHelloCount()).toBe(0);
-      expect(fakeServer.incompleteHelloCloseCount()).toBe(1);
-      expect(fakeServer.helloResponseCount()).toBe(1);
-      expect(fakeServer.sessionCloseCount()).toBe(1);
-      expect(runtime.status).toBe("connected");
-
-      await runtime.aclose();
-      await servePromise;
+      try {
+        await fakeServer.awaitNextIntakePost(2_000);
+        // Replacement intake can arrive before the old session's server-side close event.
+        await waitFor(() => fakeServer.sessionCloseCount() >= 1);
+        expect(fakeServer.helloCount()).toBeGreaterThanOrEqual(2);
+        expect(fakeServer.acceptedSessionCount()).toBeGreaterThanOrEqual(2);
+        expect(fakeServer.sessionCount()).toBe(1);
+        expect(fakeServer.pendingHelloCount()).toBe(0);
+        expect(fakeServer.incompleteHelloCloseCount()).toBe(1);
+        expect(fakeServer.helloResponseCount()).toBe(1);
+        expect(fakeServer.sessionCloseCount()).toBe(1);
+        expect(runtime.status).toBe("connected");
+      } finally {
+        await runtime.aclose();
+        await servePromise;
+      }
     },
   );
 
