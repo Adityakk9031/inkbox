@@ -210,8 +210,10 @@ impl AgentIdentity {
         identity
     }
 
-    /// Build a facade from an identity-create / identity-get payload and the
-    /// owning client. Mirrors the Python `AgentIdentity.__init__`.
+    /// Build a facade from a legacy identity payload and its owning client.
+    ///
+    /// This payload has no channel settings, so cached Slack enablement starts
+    /// false. Use `new_with_channels` or refresh before reading that setting.
     pub fn new(data: AgentIdentityData, inkbox: Arc<Inkbox>) -> Self {
         let mailbox = data.mailbox.clone();
         let phone_number = data.phone_number.clone();

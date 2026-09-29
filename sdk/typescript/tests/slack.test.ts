@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   Inkbox,
+  IdempotencyKeyReusedError,
   type SlackWebhookPayload,
   type SlackWebhookEventType,
 } from "../src/index.js";
@@ -319,5 +320,26 @@ it.each([["slack.mention_received"], ["slack.mention_received", "message.receive
       expect(JSON.parse(String(init?.body))).toEqual({ event_types: eventTypes, ...wire });
     }
     expect(fetch).toHaveBeenCalledTimes(4);
+  },
+);
+
+it.each(["send", "reaction"])(
+  "preserves the typed conflict without repeating a Slack %s write",
+  async (operation) => {
+    const c = client();
+    const { fetch, reply } = mock();
+    reply({ detail: {
+      error: "idempotency_key_reused",
+      message: "This key was already used for another request.",
+    } }, 409);
+    const request = operation === "send"
+      ? c.slack.sendMessage(C, {
+          conversationId: "CEXAMPLE", text: "Hello", idempotencyKey: "used-key",
+        })
+      : c.slack.addReaction(C, "CEXAMPLE", "1780000000.000001", "eyes", {
+          idempotencyKey: "used-key",
+        });
+    await expect(request).rejects.toBeInstanceOf(IdempotencyKeyReusedError);
+    expect(fetch).toHaveBeenCalledTimes(1);
   },
 );

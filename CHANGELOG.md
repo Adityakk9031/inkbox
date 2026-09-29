@@ -6,6 +6,9 @@ Versions move in lockstep across `@inkbox/sdk` (TypeScript), `inkbox`
 
 ## Unreleased
 
+- Document bounded app preparation before invitation creation, coordinated package and
+  skills availability, and typed Slack idempotency conflicts.
+
 - Preserve optional `page_boundary` / `pageBoundary` on retained Slack message
   pages, including empty pages with a continuation cursor. Older responses remain
   supported. Rust `SlackArchiveMessagesResponse` literals need `page_boundary: None`.
@@ -55,13 +58,6 @@ Versions move in lockstep across `@inkbox/sdk` (TypeScript), `inkbox`
   and `slack.thread_reply_received` through ordinary event selection. Overlapping
   selections produce one logical delivery per subscription, prioritizing mention, thread,
   DM, group DM, then channel among selected matches.
-- Replace the unreleased `slack.message_received` and Slack filter contract. Remove
-  `slack_filter` / `slackFilter`, `SlackWebhookFilter` / `RawSlackWebhookFilter`,
-  CLI `--slack-filter`, and Rust
-  filter-specific subscription methods. Select the five events for all incoming messages,
-  use standard subscription methods, and update incoming event handlers. Subscriptions
-  span all accessible conversations across connected workspaces; handle narrower
-  preferences in the receiving application. Other Slack event types are unchanged.
 - Document browser invitation onboarding, terminal unknown send outcomes, and
   metadata-only Slack delivery diagnostics without historical replay.
 

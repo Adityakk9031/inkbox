@@ -218,9 +218,15 @@ approval.
 
 See the [Slack API and onboarding guide](https://github.com/inkbox-ai/inkbox/blob/main/README.md#slack-workspace-connections) for implemented SDK/CLI methods.
 Use an existing identity and select the intended connected workspace explicitly.
-Installation availability reports readiness, not organization-management permission.
-Organization management can create an invitation or start an installation. Open the
-returned invitation or short-lived authorization URL in a browser; treat the full URL
+Installation availability does not imply preparation is ready or grant management permission.
+Organization management must enable Slack and prepare its app before requesting an
+invitation or installation URL. Use `start_setup` (Python/Rust), `startSetup`
+(TypeScript), or `inkbox slack setup start`. Poll `list_connections` /
+`listConnections` / `inkbox slack connection list` until `setup.status` is `ready`,
+with a bounded wait and a few seconds between reads. A pending result is not a
+failure; stop waiting at your deadline and resume status reads later. Do not loop
+on invitation creation or retry an unknown setup outcome. Then create an invitation
+or start an installation. Open the returned URL in a browser; treat the full URL
 as a secret. The direct installation URL is an opaque browser handoff. Join accessible
 public channels or invite the agent to selected private channels. Slack Connect is
 supported when the selected connection has access.

@@ -2,35 +2,7 @@
 
 ## Unreleased
 
-- Add identity-level Slack enablement to creation, updates, and identity responses,
-  with matching SDK and CLI options. Existing calls leave the setting unchanged.
-
-- Capture accessible observed Slack messages automatically. Retention remains configurable;
-  deleting retained history does not stop new capture. Legacy disable/filter inputs fail explicitly.
-
-- Allow Slack events and filters in mixed identity-owned subscriptions; preserve explicit
-  identity scope, context settings, and unchanged/clear/replace filter updates.
-
-- Add identity-wide Slack message search across workspace connections in all SDKs and
-  `inkbox slack search`, with optional narrowing filters and agent identity inference.
-
-- Add Slack CLI identity-handle selection and require DM recipients before dispatch;
-  separate management onboarding from explicit connected-workspace selection in examples.
-- Remove unused archive message source URLs, type the Python purge result, and clarify
-  retention updates and independent send/utility-operation outcomes.
-
-- Add direct Slack browser installation handoffs, capabilities/users/members, exact message
-  context/permalinks, reactions/pins, own-message edits/deletions, bounded general file
-  uploads, channel join/leave, native processing status, and durable operation lookup.
-- Add configurable retained-history settings, message search, bounded backfill/restart,
-  coverage, and purge with Python, TypeScript, Rust, and CLI parity.
-
-- Add Slack workspace invitations/connections, live conversations/messages, durable
-  idempotent sends/actions, and byte-preserving file downloads across the SDKs and CLI.
-- Add all 19 Slack webhook event types and optional connection/conversation/message-kind
-  filters, preserving omitted versus explicitly cleared filters on updates.
-- Document browser invitation onboarding, terminal unknown send outcomes, and
-  metadata-only Slack delivery diagnostics without historical replay.
+See the [canonical SDK and CLI changelog](../../CHANGELOG.md#unreleased) for the complete upcoming release.
 
 ## 0.7.9 — Media WebSocket keypad guidance
 

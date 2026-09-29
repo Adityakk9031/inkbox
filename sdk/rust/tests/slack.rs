@@ -374,3 +374,46 @@ fn mixed_slack_events_preserve_identity_scope_and_context() {
         patch.delete();
     }
 }
+
+#[test]
+fn slack_conflicts_preserve_typed_error_without_repeating_writes() {
+    let server = MockServer::start();
+    let client = Inkbox::builder("synthetic-test-key")
+        .base_url(server.base_url())
+        .build()
+        .unwrap();
+    let connection = id("22222222-2222-4222-8222-222222222222");
+    let conflict = server.mock(|when, then| {
+        when.method(POST);
+        then.status(409).json_body(json!({"detail": {
+            "error": "idempotency_key_reused",
+            "message": "This key was already used for another request."
+        }}));
+    });
+    let send = client.slack().send_message(
+        connection,
+        &SlackSendMessageOptions {
+            conversation_id: "CEXAMPLE".into(),
+            text: "Hello".into(),
+            idempotency_key: "used-key".into(),
+            thread_ts: None,
+        },
+    );
+    let reaction = client.slack().add_reaction(
+        connection,
+        "CEXAMPLE",
+        "1780000000.000001",
+        "eyes",
+        "used-key",
+    );
+    for error in [send.unwrap_err(), reaction.unwrap_err()] {
+        assert!(matches!(
+            error,
+            inkbox::InkboxError::IdempotencyKeyReused {
+                status_code: 409,
+                ..
+            }
+        ));
+    }
+    conflict.assert_hits(2);
+}

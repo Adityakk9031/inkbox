@@ -7,7 +7,7 @@ from typing import get_args
 import httpx
 import pytest
 
-from inkbox import Inkbox, InkboxAPIError, SlackWebhookEventType
+from inkbox import IdempotencyKeyReusedError, Inkbox, InkboxAPIError, SlackWebhookEventType
 
 FIXTURES = Path(__file__).parents[3] / "tests" / "fixtures"
 DATA = json.loads((FIXTURES / "slack.json").read_text(encoding="utf-8"))
@@ -282,3 +282,26 @@ def test_slack_context_and_mixed_scoped_updates(wire, event_types):
             **kwargs,
         }
     assert len(requests) == 4  # Explicit mutation scope requires no catalog request.
+
+
+@pytest.mark.parametrize("operation", ["send", "reaction"])
+def test_slack_conflicts_preserve_typed_error_without_repeating_write(wire, operation):
+    client, requests, replies = wire
+    replies.append(
+        (409, {"detail": {
+            "error": "idempotency_key_reused",
+            "message": "This key was already used for another request.",
+        }})
+    )
+    with pytest.raises(IdempotencyKeyReusedError) as caught:
+        if operation == "send":
+            client.slack.send_message(
+                C, conversation_id="CEXAMPLE", text="Hello", idempotency_key="used-key"
+            )
+        else:
+            client.slack.add_reaction(
+                C, "CEXAMPLE", "1780000000.000001", "eyes", idempotency_key="used-key"
+            )
+    assert caught.value.status_code == 409
+    assert "another request" in caught.value.message
+    assert len(requests) == 1

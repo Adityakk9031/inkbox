@@ -1917,13 +1917,30 @@ page = client.slack.list_messages(connection_id, "CEXAMPLE")
 ```
 
 Onboarding is a separate organization-management task, not part of normal agent usage.
-`installation_available` reports readiness, not permission to create invitations.
+`installation_available` reports installation availability; `setup.status` reports
+preparation readiness. Neither grants permission to create invitations.
 
 ```python
+import time
+
 management_client = Inkbox(api_key="YOUR_ORGANIZATION_MANAGEMENT_API_KEY")
+# Enable Slack on this identity through organization management first.
+setup = management_client.slack.start_setup(identity_id)
+deadline = time.monotonic() + 120
+while setup.status == "pending" and time.monotonic() < deadline:
+    time.sleep(5)
+    setup = management_client.slack.list_connections(identity_id).setup
+    if setup is None:
+        raise RuntimeError("Preparation status is unavailable; check again later")
+if setup.status != "ready":
+    raise RuntimeError(f"Slack preparation is {setup.status}; check its status before continuing")
 invitation = management_client.slack.create_invitation(identity_id)
 # Open invitation.invitation_url in the installer's browser; keep it secret.
 ```
+
+The sample bounds its preparation wait to two minutes. Pending setup can take
+longer; resume status reads later without repeatedly requesting invitations.
+For failed or unavailable setup, inspect the status before taking further action.
 
 `client.slack` also provides `list_invitations`, `revoke_invitation`, `disconnect`,
 `list_conversations`, `open_conversation`, `get_conversation`, `get_action`, `get_file`,
@@ -1945,8 +1962,9 @@ client.webhooks.subscriptions.update(
 
 An existing identity can connect to multiple Slack workspaces. Organization management
 credentials create/revoke invitations and disconnect connections; claimed identity
-credentials can read and use their own connections. Installation availability is
-readiness, not management permission; offer onboarding only in a management flow.
+credentials can read and use their own connections. Installation availability does not
+mean preparation is complete or grant management permission; offer onboarding only
+in a management flow and check `setup.status` before continuing.
 Invitation links are returned once: open the full link in a browser and treat it as a secret. The browser page handles installation.
 Direct installation is also supported: `start_installation` (Python/Rust),
 `startInstallation` (TypeScript), or `slack installation start` returns a short-lived
@@ -1975,7 +1993,9 @@ errors. General file uploads accept standard base64 for 1 byte..10 MiB of decode
 content (CLI: `slack file upload --file PATH`). Reactions, pins, own-message edits and
 deletions, channel join/leave, and native processing status use stable keys and return
 operations: poll only `in_progress`; `unknown` remains terminal uncertainty. Send
-keys and utility-operation keys have independent per-connection namespaces. Utility
+keys and utility-operation keys have independent per-connection namespaces. A key
+reused with a different request raises `IdempotencyKeyReusedError`; it is not
+a transient failure and must not be retried with changed arguments. Utility
 operations emit no outcome webhook: inspect the returned status and operation lookup,
 not send-outcome events. Native processing support depends on the workspace and may fail explicitly; no reaction is
 used as a fallback. Inspect capabilities for missing scopes before requesting an upgrade.
@@ -2024,23 +2044,14 @@ subscription. Its `event_type` is the first matching selected event in this prio
 mention, thread reply, DM, group DM, channel message. `data.message_kinds` remains
 contextual metadata. Subscriptions cover all accessible conversations across the
 identity's connected workspaces; there are no connection/conversation selectors.
-Edits and deletions use their own events without message-kind filtering. The other
-18 Slack event types are unchanged.
+Edits and deletions use their own events without message-kind filtering. The
+remaining event types cover message updates, reactions, files, and other activity.
 
 Slack events can share an identity-owned subscription with other notification families.
 Conversation context applies only to received mail, text, and iMessage events.
 Mixed subscriptions require explicit identity scope for updates and deletion.
 Slack delivery logs contain metadata only; historical replay is not supported.
 The agent runtime owns narrower attention rules, thread watches, and its own memory.
-
-**Upgrading the Slack preview:** replace `slack.message_received` with the relevant
-new event types (select all five for all incoming messages). Remove `slack_filter`,
-`slackFilter`, `SlackWebhookFilter` / `RawSlackWebhookFilter`, and CLI
-`--slack-filter` usage. Use ordinary
-Rust `create` / `update` methods, or `update_with_scope` for mixed subscriptions,
-instead of the removed filter-specific methods. Connection/conversation restrictions
-must be handled by the receiving application. This intentionally replaces the
-unreleased Slack subscription contract; update event handlers alongside subscriptions.
 
 ### Retained history and utility actions
 
