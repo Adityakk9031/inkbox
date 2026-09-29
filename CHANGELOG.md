@@ -4,6 +4,40 @@ All notable changes to the Inkbox SDK, CLI, and skills live here.
 Versions move in lockstep across `@inkbox/sdk` (TypeScript), `inkbox`
 (Python), `@inkbox/cli`, `inkbox` (Rust, crates.io), and the bundled plugin.
 
+## 0.7.10 - Retry-safe message requests
+
+### Added
+
+- Automatic request keys and bounded same-key request retries for email, SMS/MMS,
+  and iMessage sends. Explicit keys support workflows spanning separate calls.
+- SMS/MMS and iMessage key parameters in Python, TypeScript, and Rust, plus
+  `--idempotency-key` for `text send` and `imessage send`.
+- Read-only message-ID lookup by request key, including email-address helpers and
+  the `send-lookup` CLI command.
+- Single-message iMessage reads in all SDKs and `imessage get` in the CLI.
+- Typed `get_message_request_key(error)` / `getMessageRequestKey(error)` helpers
+  recover generated keys from Python/TypeScript send failures. Rust cross-call
+  recovery requires a caller-preserved key and the explicit-key send variants.
+
+### Changed
+
+- TypeScript and CLI message retries recover connection loss while reading a
+  successful response body, preserving the original request key.
+- Bundled Codex plugin version `0.1.9`.
+- Completed keyed sends replay their original response. Read the message or use
+  webhooks for current delivery status. Request retries do not guarantee delivery retries.
+- SDK send methods select replay with `Prefer: idempotency-replay`. Requests from
+  older SDKs retain their existing behavior, including completed email retry conflicts.
+  Email and SMS still wait for send acceptance; successful response shapes are unchanged.
+- New email keys are scoped to the organization, mailbox, and operation. Reusing a
+  key with changed input conflicts. Keys must contain 1–255 printable ASCII characters.
+- Original responses have a seven-day supported replay window. Do not recycle keys
+  or submit a new message merely because an earlier result is unavailable.
+- Rust keeps existing send signatures and response structs.
+- An interrupted send can remain unconfirmed without a recoverable message ID.
+  Missing lookup data never means it is safe to submit a new copy. An eligible
+  retry after confirmed non-acceptance can create the message using current settings.
+
 ## 0.7.9 — Media WebSocket keypad guidance
 
 - Documented the media WebSocket `dtmf` event for live client-driven calls:

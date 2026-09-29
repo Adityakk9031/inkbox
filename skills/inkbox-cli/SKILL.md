@@ -914,3 +914,13 @@ inkbox mailbox get alex@example.com --json
 
 Inline content uses `--signature-html <html>` or `--signature-text <text>`.
 For each format, choose inline content, a file, or its clear flag, not more than one.
+
+## Message retries
+
+Send commands generate a key and preserve it during bounded request retries.
+Use `--idempotency-key` on email, text, or iMessage sends for a workflow that repeats
+the same intended message across command invocations. Preserve the exact input.
+`inkbox send-lookup --help` describes read-only ID recovery. Check current delivery
+through the existing get commands, including `imessage get`. Request retries do
+not guarantee delivery retries. Errors print the original request key. Do not
+submit a new message solely because confirmation is missing.

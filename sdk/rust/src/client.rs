@@ -38,6 +38,7 @@ use crate::mail::resources::identity_contact_rules::MailIdentityContactRulesReso
 use crate::mail::resources::mailboxes::MailboxesResource;
 use crate::mail::resources::messages::MessagesResource;
 use crate::mail::resources::threads::ThreadsResource;
+use crate::message_sends::MessageSendsResource;
 use crate::notes::resources::notes::NotesResource;
 use crate::phone::resources::calls::CallsResource;
 use crate::phone::resources::contact_rules::PhoneContactRulesResource;
@@ -146,6 +147,7 @@ pub struct Inkbox {
     // Mail
     mailboxes: MailboxesResource,
     messages: MessagesResource,
+    message_sends: MessageSendsResource,
     drafts: DraftsResource,
     threads: ThreadsResource,
     mail_contact_rules: MailContactRulesResource,
@@ -307,6 +309,10 @@ impl Inkbox {
             vault,
             contacts: ContactsResource::new(contacts_http.clone()),
             companion: CompanionResource::new(api_http.clone()),
+            message_sends: MessageSendsResource::new(
+                api_http.clone(),
+                mk(&format!("{api_root}/mail")),
+            ),
             notes: NotesResource::new(contacts_http.clone()),
 
             signing_keys: SigningKeysResource::new(api_http.clone()),
@@ -372,6 +378,11 @@ impl Inkbox {
     }
     pub fn messages(&self) -> &MessagesResource {
         &self.messages
+    }
+
+    /// Recover original message identifiers by request key.
+    pub fn message_sends(&self) -> &MessageSendsResource {
+        &self.message_sends
     }
     pub fn drafts(&self) -> &DraftsResource {
         &self.drafts

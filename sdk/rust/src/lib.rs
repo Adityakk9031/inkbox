@@ -53,6 +53,7 @@ pub mod contacts;
 pub mod identities;
 pub mod imessage;
 pub mod mail;
+pub mod message_sends;
 pub mod notes;
 pub mod phone;
 pub mod tunnels;

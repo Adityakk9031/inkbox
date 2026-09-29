@@ -14,6 +14,7 @@ import type { RawWhoamiResponse, WhoamiResponse } from "./whoami/types.js";
 import { parseWhoamiResponse } from "./whoami/types.js";
 import { MailboxesResource } from "./mail/resources/mailboxes.js";
 import { MessagesResource } from "./mail/resources/messages.js";
+import { MessageSendsResource } from "./message_sends.js";
 import { DraftsResource } from "./mail/resources/drafts.js";
 import { ThreadsResource } from "./mail/resources/threads.js";
 import { MailContactRulesResource } from "./mail/resources/contactRules.js";
@@ -156,6 +157,7 @@ export interface InkboxOptions {
  */
 export class Inkbox {
   readonly companion: CompanionResource;
+  readonly messageSends: MessageSendsResource;
   readonly _mailboxes: MailboxesResource;
   readonly _messages: MessagesResource;
   readonly _drafts: DraftsResource;
@@ -274,6 +276,7 @@ export class Inkbox {
     this._idsResource = new IdentitiesResource(idsHttp);
 
     this._contacts = new ContactsResource(apiHttp);
+    this.messageSends = new MessageSendsResource(apiHttp, this._mailboxes);
     this.companion = new CompanionResource(apiHttp);
     this._notes = new NotesResource(apiHttp);
     this._tunnels = new TunnelsResource(apiHttp);

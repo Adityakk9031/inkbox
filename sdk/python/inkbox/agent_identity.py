@@ -1077,6 +1077,7 @@ class AgentIdentity:
         conversation_id: UUID | str | None = None,
         text: str | None = None,
         media_urls: list[str] | None = None,
+        idempotency_key: str | None = None,
     ) -> TextMessage:
         """Send an outbound SMS/MMS from this identity's phone number.
 
@@ -1107,6 +1108,8 @@ class AgentIdentity:
         """
         self._require_phone()
         send_kwargs: dict[str, Any] = {}
+        if idempotency_key is not None:
+            send_kwargs["idempotency_key"] = idempotency_key
         if to is not None:
             send_kwargs["to"] = to
         if conversation_id is not None:
@@ -1275,6 +1278,7 @@ class AgentIdentity:
         text: str | None = None,
         media_urls: list[str] | None = None,
         send_style: IMessageSendStyle | str | None = None,
+        idempotency_key: str | None = None,
     ) -> IMessage:
         """Send an outbound iMessage as this identity.
 
@@ -1308,6 +1312,7 @@ class AgentIdentity:
             media_urls=media_urls,
             send_style=send_style,
             agent_identity_id=self.id,
+            **({"idempotency_key": idempotency_key} if idempotency_key is not None else {}),
         )
 
     def list_imessages(

@@ -3,6 +3,7 @@ inkbox — Python SDK for the Inkbox APIs.
 """
 
 from inkbox.client import Inkbox
+from inkbox.message_sends import get_message_request_key as get_message_request_key
 from inkbox.sender_access import SenderAccess
 from inkbox.companion import (
     DEFAULT_COMPANION_MAX_BYTES,
@@ -499,6 +500,7 @@ __all__ = [
     "A2AWireTaskState",
     # Entry points
     "Inkbox",
+    "get_message_request_key",
     "AgentIdentity",
     "Credentials",
     # Exceptions
