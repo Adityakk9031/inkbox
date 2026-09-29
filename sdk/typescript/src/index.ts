@@ -350,6 +350,7 @@ export type {
   ContactBulkDeleteResultItem,
   ContactBulkDeleteStatus,
   ContactCustomField,
+  ContactSlackAccount,
   ContactDate,
   ContactEmail,
   ContactImportResult,
@@ -466,6 +467,7 @@ export type {
   SlackMessageKind,
   SlackConnection,
   SlackConnectionsResponse,
+  SlackSetupStatus,
   SlackInvitation,
   SlackInstallation,
   SlackAction,
@@ -479,6 +481,8 @@ export type {
 export type {
   SlackWebhookEventType,
   SlackWebhookData,
+  SlackActorProfile,
+  SlackUserProfile,
   SlackWebhookPayload,
 } from "./webhooks/types.js";
 

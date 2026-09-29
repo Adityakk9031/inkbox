@@ -39,6 +39,25 @@ pub struct SlackConnection {
 pub struct SlackConnectionsResponse {
     pub connections: Vec<SlackConnection>,
     pub installation_available: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub setup: Option<SlackSetupStatus>,
+}
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum SlackSetupState {
+    NotStarted,
+    Pending,
+    Ready,
+    Failed,
+    Unavailable,
+}
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SlackSetupStatus {
+    pub status: SlackSetupState,
+    #[serde(default)]
+    pub retry_at: Option<String>,
+    #[serde(default)]
+    pub error_code: Option<String>,
 }
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SlackInvitation {
@@ -139,6 +158,14 @@ impl SlackResource {
         Ok(serde_json::from_value(self.http.get(
             "/slack/connections",
             &[("identity_id", identity_id.to_string())],
+        )?)?)
+    }
+    /// Prepare the app without waiting; read list_connections to follow its status.
+    pub fn start_setup(&self, identity_id: Uuid) -> Result<SlackSetupStatus> {
+        Ok(serde_json::from_value(self.http.post(
+            "/slack/applications/setup",
+            Some(&json!({"identity_id": identity_id})),
+            NO_QUERY,
         )?)?)
     }
     /// Open the one-time invitation_url in a browser. Organization management only.

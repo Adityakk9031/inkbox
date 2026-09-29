@@ -856,6 +856,35 @@ SlackWebhookEventType = Literal[
 ]
 
 
+class SlackUserProfile(TypedDict, total=False):
+    display_name: str | None
+    real_name: str | None
+    first_name: str | None
+    last_name: str | None
+    email: str | None
+    phone: str | None
+    title: str | None
+    status_text: str | None
+    status_emoji: str | None
+    image_48: str | None
+    image_72: str | None
+    image_192: str | None
+
+
+class SlackActorProfile(TypedDict):
+    id: str
+    name: NotRequired[str | None]
+    real_name: NotRequired[str | None]
+    tz: NotRequired[str | None]
+    tz_label: NotRequired[str | None]
+    team_id: NotRequired[str | None]
+    is_bot: NotRequired[bool | None]
+    is_app_user: NotRequired[bool | None]
+    deleted: NotRequired[bool | None]
+    tz_offset: NotRequired[int | None]
+    profile: NotRequired[SlackUserProfile | None]
+
+
 class SlackWebhookData(TypedDict):
     identity_id: str
     connection_id: str
@@ -864,6 +893,8 @@ class SlackWebhookData(TypedDict):
     message_ts: NotRequired[str | None]
     thread_ts: NotRequired[str | None]
     actor_id: NotRequired[str | None]
+    actor_profile: NotRequired[SlackActorProfile | None]
+    contact_id: NotRequired[str | None]
     message_kinds: list[SlackMessageKind]
     event: dict[str, object]
 

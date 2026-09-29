@@ -27,6 +27,7 @@ from inkbox.slack import (
     SlackResource,
     SlackConnection,
     SlackConnectionsResponse,
+    SlackSetupStatus,
     SlackInvitation,
     SlackInstallation,
     SlackAction,
@@ -35,7 +36,9 @@ from inkbox.slack import (
     SlackFile,
     SlackMessageKind,
 )
-from inkbox.webhooks import SlackWebhookEventType, SlackWebhookData, SlackWebhookPayload
+from inkbox.webhooks import (
+    SlackActorProfile, SlackUserProfile, SlackWebhookEventType, SlackWebhookData, SlackWebhookPayload,
+)
 from inkbox.client import Inkbox
 from inkbox.message_sends import get_message_request_key as get_message_request_key
 from inkbox.sender_access import SenderAccess
@@ -256,6 +259,7 @@ from inkbox.contacts import (
 from inkbox.contacts.types import (
     CallCorrespondenceItem,
     Contact,
+    ContactSlackAccount,
     ContactAccess,
     ContactAddress,
     ContactBulkDeleteResult,
@@ -526,6 +530,7 @@ __all__ = [
     "SlackResource",
     "SlackConnection",
     "SlackConnectionsResponse",
+    "SlackSetupStatus",
     "SlackInvitation",
     "SlackInstallation",
     "SlackAction",
@@ -535,6 +540,8 @@ __all__ = [
     "SlackMessageKind",
     "SlackWebhookEventType",
     "SlackWebhookData",
+    "SlackActorProfile",
+    "SlackUserProfile",
     "SlackWebhookPayload",
     # A2A
     "A2ACard",
@@ -698,6 +705,7 @@ __all__ = [
     "IdentityTunnelCreateOptions",
     # Contacts types
     "Contact",
+    "ContactSlackAccount",
     "ContactAccess",
     "ContactPermissions",
     "ContactPermissionsResource",

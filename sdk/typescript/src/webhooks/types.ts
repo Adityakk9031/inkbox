@@ -816,6 +816,33 @@ export type SlackWebhookEventType =
   | "slack.message_send_unknown"
   | "slack.interaction"
   | "slack.session_stopped";
+export interface SlackUserProfile {
+  display_name?: string | null;
+  real_name?: string | null;
+  first_name?: string | null;
+  last_name?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  title?: string | null;
+  status_text?: string | null;
+  status_emoji?: string | null;
+  image_48?: string | null;
+  image_72?: string | null;
+  image_192?: string | null;
+}
+export interface SlackActorProfile {
+  id: string;
+  name?: string | null;
+  real_name?: string | null;
+  tz?: string | null;
+  tz_label?: string | null;
+  team_id?: string | null;
+  is_bot?: boolean | null;
+  is_app_user?: boolean | null;
+  deleted?: boolean | null;
+  tz_offset?: number | null;
+  profile?: SlackUserProfile | null;
+}
 export interface SlackWebhookData {
   identity_id: string;
   connection_id: string;
@@ -824,6 +851,8 @@ export interface SlackWebhookData {
   message_ts?: string | null;
   thread_ts?: string | null;
   actor_id?: string | null;
+  actor_profile?: SlackActorProfile | null;
+  contact_id?: string | null;
   message_kinds: import("../slack.js").SlackMessageKind[];
   event: Record<string, unknown>;
 }

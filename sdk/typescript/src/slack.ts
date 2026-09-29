@@ -17,6 +17,12 @@ export interface SlackConnection {
 export interface SlackConnectionsResponse {
   connections: SlackConnection[];
   installationAvailable: boolean;
+  setup?: SlackSetupStatus | null;
+}
+export interface SlackSetupStatus {
+  status: "not_started" | "pending" | "ready" | "failed" | "unavailable";
+  retryAt: Date | null;
+  errorCode: "setup_failed" | "outcome_unknown" | "quota_exceeded" | null;
 }
 export interface SlackInvitation {
   id: string;
@@ -78,6 +84,16 @@ interface RawConnection {
   scopes: string[];
   created_at: string;
 }
+interface RawSetupStatus {
+  status: SlackSetupStatus["status"];
+  retry_at?: string | null;
+  error_code?: SlackSetupStatus["errorCode"];
+}
+const setupStatus = (r: RawSetupStatus): SlackSetupStatus => ({
+  status: r.status,
+  retryAt: r.retry_at ? new Date(r.retry_at) : null,
+  errorCode: r.error_code ?? null,
+});
 interface RawInvitation {
   id: string;
   identity_id: string;
@@ -152,11 +168,19 @@ export class SlackResource extends SlackOperationsResource {
     const r = await this.http.get<{
       connections: RawConnection[];
       installation_available: boolean;
+      setup?: RawSetupStatus | null;
     }>("/slack/connections", { identity_id: identityId });
     return {
       connections: r.connections.map(connection),
       installationAvailable: r.installation_available,
+      setup: r.setup ? setupStatus(r.setup) : null,
     };
+  }
+  /** Prepare the app without waiting; read listConnections to follow its status. */
+  async startSetup(identityId: string): Promise<SlackSetupStatus> {
+    return setupStatus(await this.http.post<RawSetupStatus>(
+      "/slack/applications/setup", { identity_id: identityId },
+    ));
   }
   /** Organization management only. Open invitationUrl in the installer's browser. */
   async createInvitation(

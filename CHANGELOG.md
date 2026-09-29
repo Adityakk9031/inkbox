@@ -6,6 +6,13 @@ Versions move in lockstep across `@inkbox/sdk` (TypeScript), `inkbox`
 
 ## Unreleased
 
+- Add `start_setup` / `startSetup` and preparation status on Slack connection
+  reads. Setup returns promptly and can be followed without repeating installation.
+- Add optional Slack webhook sender profiles and linked contact references. Contact
+  reads include linked Slack workspace/user accounts when visible. Existing payloads
+  without these fields remain supported. Rust response struct literals for
+  `SlackConnectionsResponse`, `SlackWebhookData`, and `Contact` need the new fields.
+
 - Add `latest_per_conversation` to retained Slack message reads, with matching
   `latestPerConversation` and `--latest-per-conversation` options. Conversation
   lists paginate one latest matching message per conversation. Existing reads

@@ -28,9 +28,17 @@ class SlackConnection:
 
 
 @dataclass
+class SlackSetupStatus:
+    status: Literal["not_started", "pending", "ready", "failed", "unavailable"]
+    retry_at: datetime | None = None
+    error_code: Literal["setup_failed", "outcome_unknown", "quota_exceeded"] | None = None
+
+
+@dataclass
 class SlackConnectionsResponse:
     connections: list[SlackConnection]
     installation_available: bool
+    setup: SlackSetupStatus | None = None
 
 
 @dataclass
@@ -90,6 +98,8 @@ def _parse(cls, raw):
     for key in ("created_at", "expires_at"):
         if key in data:
             data[key] = datetime.fromisoformat(data[key])
+    if data.get("retry_at") is not None:
+        data["retry_at"] = datetime.fromisoformat(data["retry_at"])
     return cls(**data)
 
 
@@ -110,7 +120,14 @@ class SlackResource(SlackOperationsMixin):
         return SlackConnectionsResponse(
             [_parse(SlackConnection, r) for r in data["connections"]],
             data["installation_available"],
+            _parse(SlackSetupStatus, data["setup"]) if data.get("setup") is not None else None,
         )
+
+    def start_setup(self, identity_id: UUID | str) -> SlackSetupStatus:
+        """Prepare the app without waiting; read list_connections to follow its status."""
+        return _parse(SlackSetupStatus, self._http.post(
+            "/slack/applications/setup", json={"identity_id": str(identity_id)}
+        ))
 
     def create_invitation(
         self, identity_id: UUID | str, *, expires_in_seconds: int = 86400
