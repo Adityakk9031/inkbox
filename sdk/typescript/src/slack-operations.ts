@@ -96,10 +96,16 @@ export interface SlackArchivedMessage {
   source: "event" | "backfill" | "action";
   capturedAt: Date;
 }
+/** Inclusive oldest scanned list position; not necessarily a returned message. */
+export interface SlackArchivePageBoundary {
+  messageTs: string;
+  id: string;
+}
 export interface SlackArchiveMessagesResponse {
   messages: SlackArchivedMessage[];
   nextCursor: string | null;
   source: "archive";
+  pageBoundary?: SlackArchivePageBoundary | null;
 }
 export interface SlackArchiveCoverage {
   conversationId: string;
@@ -536,6 +542,7 @@ export class SlackOperationsResource {
     const r = await this.http.get<{
       messages: Wire<SlackArchivedMessage>[];
       next_cursor?: string | null;
+      page_boundary?: Wire<SlackArchivePageBoundary> | null;
       source: "archive";
     }>(path, {
       conversation_id: options.conversationId,
@@ -550,6 +557,9 @@ export class SlackOperationsResource {
       messages: r.messages.map(archivedMessage),
       nextCursor: r.next_cursor ?? null,
       source: r.source,
+      pageBoundary: r.page_boundary
+        ? { messageTs: r.page_boundary.message_ts, id: r.page_boundary.id }
+        : null,
     };
   }
   async listArchivedMessages(

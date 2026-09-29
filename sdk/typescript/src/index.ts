@@ -501,6 +501,7 @@ export type {
   SlackArchiveSettings,
   SlackArchiveSettingsOptions,
   SlackArchivedMessage,
+  SlackArchivePageBoundary,
   SlackArchiveMessagesResponse,
   SlackArchiveCoverage,
   SlackArchiveCoverageResponse,

@@ -154,11 +154,19 @@ pub struct SlackArchivedMessage {
     pub source: SlackArchiveSource,
     pub captured_at: String,
 }
+/// Inclusive oldest scanned list position; not necessarily a returned message.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SlackArchivePageBoundary {
+    pub message_ts: String,
+    pub id: Uuid,
+}
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SlackArchiveMessagesResponse {
     pub messages: Vec<SlackArchivedMessage>,
     pub next_cursor: Option<String>,
     pub source: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub page_boundary: Option<SlackArchivePageBoundary>,
 }
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]

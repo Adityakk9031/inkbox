@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { afterEach, expect, it, vi } from "vitest";
-import { Inkbox } from "../src/index.js";
+import { Inkbox, type SlackArchivePageBoundary } from "../src/index.js";
 const data = JSON.parse(
   readFileSync(
     new URL("../../../tests/fixtures/slack_operations.json", import.meta.url),
@@ -11,6 +11,24 @@ const C = data.connection_id,
   O = data.operation_id,
   TS = data.message_ts;
 const key = { idempotencyKey: "stable-key" };
+const archivePages = JSON.parse(readFileSync(
+  new URL("../../../tests/fixtures/slack_archive_pages.json", import.meta.url), "utf8",
+));
+for (const page of archivePages.cases) {
+  it(`preserves archive boundary and empty pages: ${page.name}`, async () => {
+    const fetch = vi.fn<typeof globalThis.fetch>().mockResolvedValue(new Response(JSON.stringify(page.response)));
+    vi.stubGlobal("fetch", fetch);
+    const client = new Inkbox({ apiKey: "synthetic-test-key", baseUrl: "https://example.com" });
+    const result = await client.slack.listArchivedMessages(C);
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(result.messages).toEqual([]);
+    expect(result.nextCursor).toBe(page.response.next_cursor);
+    const boundary: SlackArchivePageBoundary | null | undefined = result.pageBoundary;
+    expect(boundary).toEqual(page.response.page_boundary ? {
+      messageTs: page.response.page_boundary.message_ts, id: page.response.page_boundary.id,
+    } : null);
+  });
+}
 function calls(s: Inkbox["slack"]): Record<string, () => Promise<unknown>> {
   return {
     start_installation: () => s.startInstallation(C, { workspaceId: "T123" }),

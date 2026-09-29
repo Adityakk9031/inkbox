@@ -7,7 +7,7 @@ from uuid import UUID
 import pytest
 import test_slack as fixtures
 
-from inkbox import InkboxAPIError, SlackArchivePurgeResponse, SlackOperation
+from inkbox import InkboxAPIError, SlackArchivePageBoundary, SlackArchivePurgeResponse, SlackOperation
 
 wire = fixtures.wire
 
@@ -17,6 +17,25 @@ DATA = json.loads(
     )
 )
 C, OP_ID, TS = DATA["connection_id"], DATA["operation_id"], DATA["message_ts"]
+PAGES = json.loads(
+    (Path(__file__).parents[3] / "tests/fixtures/slack_archive_pages.json").read_text(encoding="utf-8")
+)["cases"]
+
+
+@pytest.mark.parametrize("case", PAGES, ids=lambda case: case["name"])
+def test_archive_page_boundary_preserves_empty_pages_and_older_responses(wire, case):
+    client, requests, replies = wire
+    replies.append(case["response"])
+    result = client.slack.list_archived_messages(C)
+    assert len(requests) == 1 and result.messages == []
+    assert result.next_cursor == case["response"]["next_cursor"]
+    expected = case["response"].get("page_boundary")
+    if expected is None:
+        assert result.page_boundary is None
+    else:
+        assert isinstance(result.page_boundary, SlackArchivePageBoundary)
+        assert result.page_boundary.message_ts == expected["message_ts"]
+        assert result.page_boundary.id == UUID(expected["id"])
 
 
 def calls(s):

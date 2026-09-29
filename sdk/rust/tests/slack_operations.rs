@@ -196,6 +196,48 @@ fn every_public_operation_matches_exact_wire_and_typed_responses() {
     }
 }
 #[test]
+fn archive_page_boundary_preserves_empty_pages_and_older_responses() {
+    let pages: Value = serde_json::from_str(include_str!(
+        "../../../tests/fixtures/slack_archive_pages.json"
+    ))
+    .unwrap();
+    let server = MockServer::start();
+    let client = Inkbox::builder("synthetic-test-key")
+        .base_url(server.base_url())
+        .build()
+        .unwrap();
+    let id = Uuid::nil();
+    for case in pages["cases"].as_array().unwrap() {
+        let mut mock = server.mock(|when, then| {
+            when.method(Method::GET)
+                .path(format!("/api/v1/slack/connections/{id}/archive/messages"));
+            then.status(200).json_body(case["response"].clone());
+        });
+        let result = client
+            .slack()
+            .list_archived_messages(id, &SlackArchiveMessagesOptions::default())
+            .unwrap();
+        assert!(result.messages.is_empty());
+        assert_eq!(
+            serde_json::to_value(&result.next_cursor).unwrap(),
+            case["response"]["next_cursor"]
+        );
+        assert_eq!(
+            serde_json::to_value(&result.page_boundary).unwrap(),
+            case["response"]["page_boundary"]
+        );
+        if let Some(boundary) = result.page_boundary {
+            assert_eq!(boundary.message_ts, "999999999999.000001");
+            assert_eq!(
+                boundary.id,
+                Uuid::parse_str("44444444-4444-4444-8444-444444444444").unwrap()
+            );
+        }
+        mock.assert_hits(1);
+        mock.delete();
+    }
+}
+#[test]
 fn uncertain_outcomes_and_http_errors_do_not_retry_and_keys_are_required() {
     let server = MockServer::start();
     let client = Inkbox::builder("synthetic-test-key")

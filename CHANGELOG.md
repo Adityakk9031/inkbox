@@ -6,6 +6,10 @@ Versions move in lockstep across `@inkbox/sdk` (TypeScript), `inkbox`
 
 ## Unreleased
 
+- Preserve optional `page_boundary` / `pageBoundary` on retained Slack message
+  pages, including empty pages with a continuation cursor. Older responses remain
+  supported. Rust `SlackArchiveMessagesResponse` literals need `page_boundary: None`.
+
 - Add `start_setup` / `startSetup`, CLI `slack setup start`, and preparation status on Slack connection
   reads. Setup returns promptly and can be followed without repeating installation.
 - Add optional Slack webhook sender profiles and linked contact references. Contact

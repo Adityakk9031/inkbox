@@ -123,10 +123,19 @@ class SlackArchivedMessage:
 
 
 @dataclass
+class SlackArchivePageBoundary:
+    """Inclusive oldest scanned list position; not necessarily a returned message."""
+
+    message_ts: str
+    id: UUID
+
+
+@dataclass
 class SlackArchiveMessagesResponse:
     messages: list[SlackArchivedMessage]
     next_cursor: str | None = None
     source: Literal["archive"] = "archive"
+    page_boundary: SlackArchivePageBoundary | None = None
 
 
 @dataclass
@@ -516,6 +525,8 @@ class SlackOperationsMixin:
         raw["messages"] = [
             _parse(SlackArchivedMessage, item) for item in raw["messages"]
         ]
+        if raw.get("page_boundary") is not None:
+            raw["page_boundary"] = _parse(SlackArchivePageBoundary, raw["page_boundary"])
         return _parse(SlackArchiveMessagesResponse, raw)
 
     def list_archived_messages(
