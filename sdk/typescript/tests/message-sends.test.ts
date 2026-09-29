@@ -4,6 +4,61 @@ import { MessageSendsResource, getMessageRequestKey, postMessage } from "../src/
 import type { MailboxesResource } from "../src/mail/resources/mailboxes.js";
 
 describe("message request identity", () => {
+  it("recovers a response-body disconnect with the original key and input", async () => {
+    vi.useFakeTimers();
+    const disconnected = new Response(new ReadableStream({
+      start(controller) { controller.error(new TypeError("terminated")); },
+    }), { status: 201 });
+    const fetchMock = vi.fn().mockResolvedValueOnce(disconnected)
+      .mockResolvedValueOnce(Response.json({ id: "original" }, { status: 201 }));
+    vi.stubGlobal("fetch", fetchMock);
+    try {
+      const pending = postMessage(new HttpTransport("test-only", "https://api.example.com"),
+        "/messages", { text: "hello" });
+      await vi.runAllTimersAsync();
+      expect(await pending).toEqual({ id: "original" });
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      const first = fetchMock.mock.calls[0][1];
+      const second = fetchMock.mock.calls[1][1];
+      expect(first.headers["Idempotency-Key"]).toMatch(/^[0-9a-f-]{36}$/);
+      expect(second.headers).toEqual(first.headers);
+      expect(second.body).toBe(first.body);
+    } finally { vi.unstubAllGlobals(); vi.useRealTimers(); }
+  });
+
+  it("bounds repeated response-body disconnects and preserves the cause and key", async () => {
+    vi.useFakeTimers();
+    const cause = new TypeError("terminated");
+    const fetchMock = vi.fn().mockImplementation(async () => new Response(new ReadableStream({
+      start(controller) { controller.error(cause); },
+    }), { status: 201 }));
+    vi.stubGlobal("fetch", fetchMock);
+    try {
+      const pending = postMessage(new HttpTransport("test-only", "https://api.example.com"),
+        "/messages", {}, "original-key").catch(error => error);
+      await vi.runAllTimersAsync();
+      const error = await pending;
+      expect(error).toBeInstanceOf(InkboxConnectionError);
+      expect(error.cause).toBe(cause);
+      expect(getMessageRequestKey(error)).toBe("original-key");
+      expect(fetchMock).toHaveBeenCalledTimes(3);
+    } finally { vi.unstubAllGlobals(); vi.useRealTimers(); }
+  });
+
+  it("does not retry a programmer TypeError while decoding the response", async () => {
+    const response = Response.json({ id: "original" }, { status: 201 });
+    const error = new TypeError("Body is unusable: Body has already been read");
+    vi.spyOn(response, "json").mockRejectedValue(error);
+    const fetchMock = vi.fn().mockResolvedValue(response);
+    vi.stubGlobal("fetch", fetchMock);
+    try {
+      await expect(postMessage(new HttpTransport("test-only", "https://api.example.com"),
+        "/messages", {}, "original-key")).rejects.toBe(error);
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(getMessageRequestKey(error)).toBe("original-key");
+    } finally { vi.unstubAllGlobals(); }
+  });
+
   it.each([[409, "idempotency_in_progress", 3], [503, "send_outcome_ambiguous", 3], [409, "result_unavailable", 1]] as const)(
     "handles %s %s with %s stable-key attempts", async (status, code, count) => {
       vi.useFakeTimers();

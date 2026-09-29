@@ -32,8 +32,7 @@ export function validateIdempotencyKey(key: string): void {
 }
 
 /**
- * Thrown when a request fails before any HTTP response is received —
- * DNS failure, refused connection, TLS error, unreachable proxy.
+ * Thrown when connecting fails or a response body is interrupted.
  * `cause` carries the underlying fetch error.
  */
 export class InkboxConnectionError extends InkboxError {
@@ -756,15 +755,23 @@ export class HttpTransport {
       return undefined as T;
     }
 
-    if (opts.rawResponse === "text") {
-      return (await resp.text()) as unknown as T;
-    }
+    try {
+      if (opts.rawResponse === "text") {
+        return (await resp.text()) as unknown as T;
+      }
 
-    if (opts.rawResponse === "bytes") {
-      const data = new Uint8Array(await resp.arrayBuffer());
-      return { data, headers: resp.headers } as T;
-    }
+      if (opts.rawResponse === "bytes") {
+        const data = new Uint8Array(await resp.arrayBuffer());
+        return { data, headers: resp.headers } as T;
+      }
 
-    return resp.json() as Promise<T>;
+      return await resp.json() as T;
+    } catch (err) {
+      // Native Node fetch uses this error for an interrupted response stream.
+      if (err instanceof TypeError && err.message === "terminated") {
+        throw new InkboxConnectionError(`Response from ${url} was interrupted.`, err);
+      }
+      throw err;
+    }
   }
 }

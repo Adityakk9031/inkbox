@@ -51,34 +51,46 @@ test("imessage get resolves its identity and reads one message", async () => {
   } finally { server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); }
 });
 
-test("text send preserves its generated key after a lost HTTP response", async () => {
-  const sends = [];
-  const server = http.createServer((request, response) => {
-    response.setHeader("Content-Type", "application/json");
-    if (request.method === "GET") {
-      response.end(JSON.stringify({ id, organization_id: "org_example", agent_handle: "example",
-        created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:00Z", mailbox: null,
-        phone_number: { id, number: "+15555550100", type: "local", status: "active" } }));
-      return;
-    }
-    let body = "";
-    request.on("data", chunk => { body += chunk; });
-    request.on("end", () => {
-      sends.push({ body, key: request.headers["idempotency-key"], prefer: request.headers.prefer });
-      if (sends.length === 1) { response.destroy(); return; }
-      response.statusCode = 201;
-      response.end(JSON.stringify({ id, direction: "outbound", text: "Hello", type: "sms",
-        local_phone_number: "+15555550100", remote_phone_number: "+15555550123",
-        delivery_status: "queued", created_at: "2026-01-01T00:00:00Z" }));
+for (const disconnect of ["before headers", "during response body"]) {
+  test(`text send preserves its generated key after a disconnect ${disconnect}`, async () => {
+    const sends = [];
+    const server = http.createServer((request, response) => {
+      response.setHeader("Content-Type", "application/json");
+      if (request.method === "GET") {
+        response.end(JSON.stringify({ id, organization_id: "org_example", agent_handle: "example",
+          created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:00Z", mailbox: null,
+          phone_number: { id, number: "+15555550100", type: "local", status: "active" } }));
+        return;
+      }
+      let body = "";
+      request.on("data", chunk => { body += chunk; });
+      request.on("end", () => {
+        sends.push({ body, key: request.headers["idempotency-key"], prefer: request.headers.prefer });
+        if (sends.length === 1) {
+          if (disconnect === "during response body") {
+            response.writeHead(201);
+            response.flushHeaders();
+            response.write('{"id":');
+            setTimeout(() => response.destroy(), 25);
+          } else {
+            response.destroy();
+          }
+          return;
+        }
+        response.statusCode = 201;
+        response.end(JSON.stringify({ id, direction: "outbound", text: "Hello", type: "sms",
+          local_phone_number: "+15555550100", remote_phone_number: "+15555550123",
+          delivery_status: "queued", created_at: "2026-01-01T00:00:00Z" }));
+      });
     });
+    await new Promise(resolve => server.listen(0, "127.0.0.1", resolve));
+    try {
+      const result = await run(server.address().port, ["text", "send", "--identity", "example", "--to", "+15555550123", "--text", "Hello"]);
+      assert.equal(result.id, id);
+      assert.equal(sends.length, 2);
+      assert.deepEqual(sends[0], sends[1]);
+      assert.match(sends[0].key, /^[0-9a-f-]{36}$/);
+      assert.equal(sends[0].prefer, "idempotency-replay");
+    } finally { server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); }
   });
-  await new Promise(resolve => server.listen(0, "127.0.0.1", resolve));
-  try {
-    const result = await run(server.address().port, ["text", "send", "--identity", "example", "--to", "+15555550123", "--text", "Hello"]);
-    assert.equal(result.id, id);
-    assert.equal(sends.length, 2);
-    assert.deepEqual(sends[0], sends[1]);
-    assert.match(sends[0].key, /^[0-9a-f-]{36}$/);
-    assert.equal(sends[0].prefer, "idempotency-replay");
-  } finally { server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); }
-});
+}
