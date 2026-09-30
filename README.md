@@ -590,7 +590,7 @@ catalog once per list call and fails clearly when unsupported; omitted scope add
 no request. The mixed-event examples below assume the capability is available.
 
 Subscriptions belong to an identity and can combine mail, text, iMessage,
-call-lifecycle and A2A notifications, even before channels are configured.
+call-lifecycle, A2A, and Slack notifications, even before channels are configured.
 Existing list calls keep their single-family views. Explicitly pass
 `scope="identity"` (Python), `scope: "identity"` (TypeScript), or use Rust's
 `list_with_scope` to include every family and mixed subscription. The CLI supports
@@ -628,6 +628,28 @@ See [message send retries](https://inkbox.ai/docs/api/message-sends).
 
 Read an iMessage by ID with `imessages.get(...)`, Rust's `imessages().get(...)`,
 or `inkbox imessage get <message-id> --identity <handle>`.
+
+## Slack workspace connections
+
+Slack SDK and CLI methods require version **0.7.11 or later**.
+
+Connect an existing Inkbox identity to your Slack workspace. The
+[Python SDK](sdk/python/README.md#slack), [TypeScript SDK](sdk/typescript/README.md#slack),
+[Rust SDK](sdk/rust/README.md#slack), and [CLI](cli/README.md#slack) support reusable organization-owned workspace setup
+and direct browser handoffs, live conversations/history, durable message
+and utility actions, general file uploads/downloads, and identity-owned Slack
+webhooks with five selectable incoming-message events. Identity-wide message search spans workspace connections by default.
+Prepare the identity’s Slack app in a saved workspace before installing it;
+no identity toggle is required. Organization-member sessions, organization admin API
+keys, and claimed agent keys can save setup workspaces; claimed agent keys prepare
+and install only their own identity’s app.
+Accessible observed messages are captured automatically, independently of webhook
+subscriptions. Searchable retained history, bounded imports, and coverage are separate
+from live reads. Retention has no time limit by default; organization management
+can set a retention limit or delete existing history without stopping new capture.
+Pausing the identity stops live operations and webhook delivery while preserving
+its connections and history. Workspace approval, connection ownership, and current
+conversation access remain required.
 
 ## License
 

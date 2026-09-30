@@ -4,6 +4,94 @@ All notable changes to the Inkbox SDK, CLI, and skills live here.
 Versions move in lockstep across `@inkbox/sdk` (TypeScript), `inkbox`
 (Python), `@inkbox/cli`, `inkbox` (Rust, crates.io), and the bundled plugin.
 
+## Unreleased
+
+## 0.7.11 - Slack workspace connections (unreleased)
+
+- Avoid competing tunnel reconnect attempts when the initial handshake closes early.
+- Support setup and installation with claimed agent keys for their own identity;
+  clarify organization-member session and organization admin API-key permissions.
+- Expose immediate rate-limit guidance on Slack send results as `retry_after` /
+  `retryAfter`, without automatic retries. Stored action reads and same-key replays
+  do not retain this hint. Rust `SlackAction` literals need `retry_after: None`.
+- Recover Slack sends without resending using `get_action_by_key` /
+  `getActionByKey` or `slack action get-by-key`. A missing action does not prove
+  that no send occurred.
+- Prepare Python, TypeScript, Rust, CLI, and bundled Claude plugin version `0.7.11`,
+  with bundled Codex plugin version `0.1.10`.
+
+- Add organization-owned provisioning workspaces across Python, TypeScript, Rust, and CLI.
+  Save both configuration tokens once and reuse verified workspace metadata. Credentials
+  are write-only; CLI input uses a private JSON file or stdin.
+- Require a saved provisioning-workspace UUID for app setup and expose selected workspace
+  metadata plus `needs_credentials` recovery. Browser installation targets that workspace.
+  Rust response struct literals need `provisioning_workspace` and setup status literals
+  need `provisioning_workspace_id` (both optional). Remove the unreleased Slack invitation API.
+
+- Report `application_created` / `applicationCreated` on Slack connection reads,
+  independently of enablement or connected workspaces. Older responses default to
+  `false`. Rust `SlackConnectionsResponse` literals need `application_created`.
+
+- Preserve the direction of bounded Slack message context: channel reads include
+  messages at or before the target; thread reads include the target and following
+  replies. `window` reports either direction. Rust keeps its existing string field.
+
+- Document bounded app preparation before installation, coordinated package and
+  skills availability, and typed Slack idempotency conflicts.
+
+- Preserve optional `page_boundary` / `pageBoundary` on retained Slack message
+  pages, including empty pages with a continuation cursor. Older responses remain
+  supported. Rust `SlackArchiveMessagesResponse` literals need `page_boundary: None`.
+
+- Add `start_setup` / `startSetup`, CLI `slack setup start`, and preparation status on Slack connection
+  reads. Setup returns promptly and can be followed without repeating installation.
+- Add optional Slack webhook sender profiles and linked contact references. Contact
+  reads include linked Slack workspace/user accounts when visible. Existing payloads
+  without these fields remain supported. Rust response struct literals for
+  `SlackConnectionsResponse`, `SlackWebhookData`, and `Contact` need the new fields.
+
+- Add `latest_per_conversation` to retained Slack message reads, with matching
+  `latestPerConversation` and `--latest-per-conversation` options. Conversation
+  lists paginate one latest matching message per conversation. Existing reads
+  still return individual messages. Rust struct literals for
+  `SlackArchiveMessagesOptions` need the new field or `..Default::default()`.
+
+- Prepare Slack apps directly for active identities without a separate identity
+  toggle. Connection responses report app creation and setup status.
+
+- Capture accessible observed Slack messages automatically. Retention remains configurable;
+  deleting retained history does not stop new capture. Remove the unreleased capture toggle
+  and conversation-filter options from settings, responses, and CLI flags; settings now accept only retention.
+
+- Allow Slack events in mixed identity-owned subscriptions; preserve explicit
+  identity scope, context settings, signing keys, and delivery authentication.
+
+- Add identity-wide Slack message search across workspace connections in all SDKs and
+  `inkbox slack search`, with optional narrowing filters and agent identity inference.
+
+- Add optional approved Console completion URLs to Slack installation handoffs,
+  preserving existing default requests across Python, TypeScript, Rust, and CLI.
+- Add Slack CLI identity-handle selection and require DM recipients before dispatch;
+  separate management onboarding from explicit connected-workspace selection in examples.
+- Remove unused archive message source URLs, type the Python purge result, and clarify
+  retention updates and independent send/utility-operation outcomes.
+
+- Add direct Slack browser installation handoffs, capabilities/users/members, exact message
+  context/permalinks, reactions/pins, own-message edits/deletions, bounded general file
+  uploads, channel join/leave, native processing status, and durable operation lookup.
+- Add configurable retained-history settings, message search, bounded backfill/restart,
+  coverage, and purge with Python, TypeScript, Rust, and CLI parity.
+
+- Add Slack workspace setup/connections, live conversations/messages, durable
+  idempotent sends/actions, and byte-preserving file downloads across the SDKs and CLI.
+- Add 23 Slack webhook event types. Incoming messages use `slack.dm_received`,
+  `slack.group_dm_received`, `slack.channel_message_received`, `slack.mention_received`,
+  and `slack.thread_reply_received` through ordinary event selection. Overlapping
+  selections produce one logical delivery per subscription, prioritizing mention, thread,
+  DM, group DM, then channel among selected matches.
+- Document browser installation onboarding, terminal unknown send outcomes, and
+  metadata-only Slack delivery diagnostics without historical replay.
+
 ## 0.7.10 - Retry-safe message requests
 
 ### Added

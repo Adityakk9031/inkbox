@@ -174,7 +174,7 @@ function assertNoIncomingCall(eventTypes: string[]): void {
   }
 }
 
-const EVENT_PREFIXES = ["message.", "text.", "imessage.", "call.", "a2a."];
+const EVENT_PREFIXES = ["message.", "text.", "imessage.", "call.", "a2a.", "slack."];
 
 function assertKnownEventPrefixes(eventTypes: string[]): void {
   for (const eventType of eventTypes) {
@@ -338,6 +338,7 @@ export class WebhookSubscriptionsResource {
   async create(
     options: CreateWebhookSubscriptionOptions,
   ): Promise<WebhookSubscriptionCreateResponse> {
+    assertNoRemovedSlackFilter(options);
     const owners: Record<string, string | undefined | null> = {
       mailbox: options.mailboxId,
       phone_number: options.phoneNumberId,
@@ -385,6 +386,7 @@ export class WebhookSubscriptionsResource {
     subId: string,
     options: UpdateWebhookSubscriptionOptions,
   ): Promise<WebhookSubscription> {
+    assertNoRemovedSlackFilter(options);
     const body: Record<string, unknown> = {};
     if (options.url !== undefined) {
       assertUrlNotNull(options.url);
@@ -419,5 +421,11 @@ export class WebhookSubscriptionsResource {
   /** Delete a subscription. Mixed subscriptions require explicit identity scope. */
   async delete(subId: string, options: { scope?: "identity" } = {}): Promise<void> {
     await this.http.delete(`${PATH}/${subId}${options.scope === "identity" ? "?scope=identity" : ""}`);
+  }
+}
+
+function assertNoRemovedSlackFilter(options: object): void {
+  if ("slackFilter" in options || "slack_filter" in options) {
+    throw new TypeError("Slack webhook filters have been removed; select Slack event types instead");
   }
 }

@@ -83,3 +83,12 @@ pub use response_metadata::{APIResponse, ResponseMetadata, ResponseNotice, Respo
 mod directional_tests;
 #[cfg(test)]
 mod response_metadata_tests;
+
+pub mod slack;
+pub use slack::*;
+pub mod slack_operations;
+pub use slack_operations::*;
+pub use webhooks::types::{
+    SlackActorProfile, SlackUserProfile, SlackWebhookData, SlackWebhookEventType,
+    SlackWebhookPayload,
+};

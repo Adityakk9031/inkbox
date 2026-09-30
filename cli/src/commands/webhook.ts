@@ -1,5 +1,6 @@
 import { Command, Option } from "commander";
 import { printStatus } from "../output.js";
+
 import { createClient, getGlobalOpts } from "../client.js";
 import { readSecretFromStdin } from "../invitation-token.js";
 import { output } from "../output.js";

@@ -3,7 +3,7 @@ inkbox/webhook_subscriptions.py
 
 Identity-owned webhook subscriptions.
 
-A subscription can combine mail, text, iMessage, call-lifecycle and A2A
+A subscription can combine mail, text, iMessage, call-lifecycle, A2A and Slack
 notifications, including channels not yet configured on the identity.
 Incoming-call actions remain separate synchronous call-control settings.
 """
@@ -172,7 +172,7 @@ def _assert_no_incoming_call(event_types: list[str]) -> None:
         )
 
 
-_EVENT_PREFIXES = ("message.", "text.", "imessage.", "call.", "a2a.")
+_EVENT_PREFIXES = ("message.", "text.", "imessage.", "call.", "a2a.", "slack.")
 
 
 def _assert_known_event_prefixes(event_types: list[str]) -> None:
@@ -401,7 +401,9 @@ class WebhookSubscriptionsResource:
         data = self._http.patch(f"{_BASE}/{_uuid_str(sub_id)}{suffix}", json=body)
         return WebhookSubscription._from_dict(data)
 
-    def delete(self, sub_id: UUID | str, *, scope: Literal["identity"] | None = None) -> None:
+    def delete(
+        self, sub_id: UUID | str, *, scope: Literal["identity"] | None = None
+    ) -> None:
         """Delete a subscription; mixed subscriptions require explicit identity scope."""
         suffix = "?scope=identity" if scope == "identity" else ""
         self._http.delete(f"{_BASE}/{_uuid_str(sub_id)}{suffix}")
