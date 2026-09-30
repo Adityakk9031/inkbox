@@ -1480,15 +1480,21 @@ An unavailable result does not mean the original message was never sent.
 See the [Slack API and onboarding guide](https://github.com/inkbox-ai/inkbox/blob/main/sdk/typescript/README.md#slack) for implemented SDK/CLI methods.
 Use an existing identity. Select a workspace explicitly for live reads and mutations.
 Installation availability does not imply preparation is ready or grant management permission.
-Organization management must enable Slack and prepare its app before requesting an
-invitation or installation URL. Use `start_setup` (Python/Rust), `startSetup`
-(TypeScript), or `inkbox slack setup start`. Poll `list_connections` /
-`listConnections` / `inkbox slack connection list` until `setup.status` is `ready`,
-with a bounded wait and a few seconds between reads. A pending result is not a
-failure; stop waiting at your deadline and resume status reads later. Do not loop
-on invitation creation or retry an unknown setup outcome. Then create an invitation
-or start an installation. Open the returned URL in a browser; treat the full URL
-as a secret. The direct installation URL is an opaque browser handoff. Join accessible
+Organization management must save both app-configuration tokens for the target workspace,
+then enable Slack and prepare its app using that saved provisioning-workspace UUID.
+Use `save_provisioning_workspace` / `saveProvisioningWorkspace` or CLI
+`slack provisioning-workspace save --credentials-file <path>` (use `-` for stdin).
+Reuse safe metadata from `list_provisioning_workspaces` / `listProvisioningWorkspaces`.
+Tokens are write-only; never put them in command arguments or output.
+Pass the saved ID to `start_setup` (Python/Rust), `startSetup` (TypeScript), or
+`slack setup start --provisioning-workspace-id <uuid>`.
+Poll connection reads until `setup.status` is `ready`, with a bounded wait and a few
+seconds between reads. For `needs_credentials`, update workspace credentials first.
+Do not blindly retry an unknown setup outcome. Start installation only when ready.
+Open the returned URL in a browser; treat the full URL as a secret. After approval,
+list connections again to confirm the expected workspace is connected. The app is
+bound to its chosen workspace; no client-invitation workflow is supported.
+Join accessible
 public channels or invite the agent to selected private channels. Slack Connect is
 supported when the selected connection has access.
 

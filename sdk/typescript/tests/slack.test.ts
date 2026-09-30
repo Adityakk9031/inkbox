@@ -94,29 +94,17 @@ it("maps every Slack operation to exact wire requests and returns raw bytes", as
       { identity_id: I },
     ),
   ).toMatchObject({ installationAvailable: false });
-  expect(
-    await check(
-      fixture.invitation,
-      () => c.slack.createInvitation(I, { expiresInSeconds: 300 }),
-      "POST",
-      "/invitations",
-      { identity_id: I, expires_in_seconds: 300 },
-    ),
-  ).toMatchObject({ invitationUrl: fixture.invitation.invitation_url });
-  await check(
-    [{ ...fixture.invitation, invitation_url: null }],
-    () => c.slack.listInvitations(I),
-    "GET",
-    "/invitations",
-    undefined,
-    { identity_id: I },
-  );
-  await check(
-    fixture.invitation,
-    () => c.slack.revokeInvitation(fixture.invitation.id),
-    "POST",
-    `/invitations/${fixture.invitation.id}/revoke`,
-  );
+  expect(await check(
+    fixture.provisioning_workspace,
+    () => c.slack.saveProvisioningWorkspace({ accessToken: "synthetic-access", refreshToken: "synthetic-refresh" }),
+    "POST", "/provisioning-workspaces",
+    { access_token: "synthetic-access", refresh_token: "synthetic-refresh" },
+  )).toMatchObject({ id: fixture.provisioning_workspace.id, tokenExpiresAt: new Date(fixture.provisioning_workspace.token_expires_at) });
+  expect(await check(
+    { workspaces: [fixture.provisioning_workspace] },
+    () => c.slack.listProvisioningWorkspaces(),
+    "GET", "/provisioning-workspaces",
+  )).toMatchObject([{ id: fixture.provisioning_workspace.id }]);
   await check(
     fixture.connection,
     () => c.slack.disconnect(C),
@@ -203,7 +191,7 @@ it("maps every Slack operation to exact wire requests and returns raw bytes", as
       `/connections/${C}/files/FEXAMPLE/content`,
     ),
   ).toEqual(new Uint8Array([0, 255, 128, 1]));
-  expect(fetch).toHaveBeenCalledTimes(13);
+  expect(fetch).toHaveBeenCalledTimes(12);
 });
 it.each([409, 429, 503])(
   "does not retry rejected or ambiguous send (%s)",
@@ -364,4 +352,24 @@ it.each([
   expect(Object.fromEntries(url.searchParams)).toEqual({
     limit: "5", ...(threadTs ? { thread_ts: threadTs } : {}),
   });
+});
+
+
+it.each([403, 409, 422, 429, 503])("does not retry credential saves after HTTP %s", async (status) => {
+  const c = client();
+  const { fetch, reply } = mock();
+  reply({ detail: "Workspace credentials could not be saved" }, status);
+  await expect(c.slack.saveProvisioningWorkspace({ accessToken: "synthetic-access", refreshToken: "synthetic-refresh" })).rejects.toMatchObject({ statusCode: status });
+  expect(fetch).toHaveBeenCalledTimes(1);
+});
+
+it("parses saved workspace metadata without exposing echoed credential fields", async () => {
+  const c = client();
+  const { reply } = mock();
+  reply({ workspaces: [{ ...fixture.provisioning_workspace, token_expires_at: null,
+    status: "reauthorization_required", access_token: "must-not-surface", refresh_token: "must-not-surface" }] });
+  const saved = await c.slack.listProvisioningWorkspaces();
+  expect(saved[0].tokenExpiresAt).toBeNull();
+  expect(saved[0].status).toBe("reauthorization_required");
+  expect(JSON.stringify(saved)).not.toContain("must-not-surface");
 });

@@ -904,7 +904,10 @@ let action = client.slack().send_message(connection.id, &SlackSendMessageOptions
 
 Onboarding is a separate organization-management task, not part of normal agent usage.
 `installation_available` reports installation availability; `setup.status` reports
-preparation readiness. Neither grants permission to create invitations.
+preparation readiness. Neither grants permission to manage setup. Save app-configuration credentials for
+the target workspace first; reuse that saved workspace for later identity apps.
+Credentials are write-only. The returned metadata identifies the verified workspace.
+An identity app stays bound to its selected workspace.
 
 ```rust,no_run
 use inkbox::{Inkbox, SlackSetupState};
@@ -914,7 +917,12 @@ use uuid::Uuid;
 let management_client = Inkbox::new("YOUR_ORGANIZATION_MANAGEMENT_API_KEY")?;
 let identity_id = Uuid::parse_str("22222222-2222-4222-8222-222222222222")?;
 // Enable Slack on this identity through organization management first.
-let mut setup = management_client.slack().start_setup(identity_id)?;
+let workspace = management_client.slack().save_provisioning_workspace(
+    &std::env::var("SLACK_CONFIGURATION_ACCESS_TOKEN")?,
+    &std::env::var("SLACK_CONFIGURATION_REFRESH_TOKEN")?,
+)?;
+// For a workspace already saved, use list_provisioning_workspaces() and select its ID.
+let mut setup = management_client.slack().start_setup(identity_id, workspace.id)?;
 let deadline = Instant::now() + Duration::from_secs(120);
 while setup.status == SlackSetupState::Pending && Instant::now() < deadline {
     std::thread::sleep(Duration::from_secs(5));
@@ -924,19 +932,21 @@ while setup.status == SlackSetupState::Pending && Instant::now() < deadline {
 if setup.status != SlackSetupState::Ready {
     return Err("Slack is not ready; check preparation status before continuing".into());
 }
-let invitation = management_client.slack().create_invitation(identity_id, None)?;
-// Open invitation.invitation_url in the installer's browser; keep it secret.
+let installation = management_client.slack().start_installation(identity_id, None)?;
+// Open installation.authorization_url in a browser; keep it secret.
 # Ok::<(), Box<dyn std::error::Error>>(())
 ```
 
 The sample bounds its preparation wait to two minutes. Pending setup can take
-longer; resume status reads later without repeatedly requesting invitations.
+longer; resume status reads later without repeatedly starting installation.
 For failed or unavailable setup, inspect the status before taking further action.
+`needs_credentials` requires saving valid credentials for the selected workspace.
+After browser approval, list connections again to confirm `connected`.
 
-`client.slack()` also provides `list_invitations`, `revoke_invitation`, `disconnect`,
+`client.slack()` also provides `list_provisioning_workspaces`, `save_provisioning_workspace`, `disconnect`,
 `list_conversations`, `open_conversation`, `get_conversation`, `list_messages`,
 `get_action`, `get_file`, and `download_file` (returns `Vec<u8>`). Pass
-`SlackPageOptions` / `SlackMessagesOptions` for pagination. Connections, invitations,
+`SlackPageOptions` / `SlackMessagesOptions` for pagination. Connections, saved workspaces,
 actions, file metadata, pages, and send options are public typed exports.
 
 For webhook subscriptions use `create` / `update` with ordinary event selection.
@@ -949,12 +959,11 @@ means terminal uncertainty, never an arbitrary unrecognized value.
 
 ### Slack behavior
 
-An existing identity can connect to multiple Slack workspaces. Organization management
-credentials create/revoke invitations and disconnect connections; claimed identity
+Organization management credentials save workspace configuration, prepare identity apps,
+start browser installations, and disconnect connections; claimed identity
 credentials can read and use their own connections. Installation availability does not
 mean preparation is complete or grant management permission; offer onboarding only
 in a management flow and check `setup.status` before continuing.
-Invitation links are returned once: open the full link in a browser and treat it as a secret. The browser page handles installation.
 Direct installation is also supported: `start_installation` (Python/Rust),
 `startInstallation` (TypeScript), or `slack installation start` returns a short-lived
 opaque authorization URL to open in a browser. Treat it as a secret; the browser

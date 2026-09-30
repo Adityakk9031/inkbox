@@ -1956,12 +1956,20 @@ const page = await client.slack.listMessages(connectionId, "CEXAMPLE");
 
 Onboarding is a separate organization-management task, not part of normal agent usage.
 `installationAvailable` reports installation availability; `setup.status` reports
-preparation readiness. Neither grants permission to create invitations.
+preparation readiness. Neither grants permission to manage setup. Save app-configuration credentials for
+the target workspace first; reuse that saved workspace for later identity apps.
+Credentials are write-only. The returned metadata identifies the verified workspace.
+An identity app stays bound to its selected workspace.
 
 ```typescript
 const managementClient = new Inkbox({ apiKey: "YOUR_ORGANIZATION_MANAGEMENT_API_KEY" });
 // Enable Slack on this identity through organization management first.
-let setup = await managementClient.slack.startSetup(identityId);
+const workspace = await managementClient.slack.saveProvisioningWorkspace({
+  accessToken: process.env.SLACK_CONFIGURATION_ACCESS_TOKEN!,
+  refreshToken: process.env.SLACK_CONFIGURATION_REFRESH_TOKEN!,
+});
+// For a workspace already saved, use listProvisioningWorkspaces() and select its ID.
+let setup = await managementClient.slack.startSetup(identityId, workspace.id);
 const deadline = Date.now() + 120_000;
 while (setup.status === "pending" && Date.now() < deadline) {
   await new Promise((resolve) => setTimeout(resolve, 5_000));
@@ -1972,15 +1980,17 @@ while (setup.status === "pending" && Date.now() < deadline) {
 if (setup.status !== "ready") {
   throw new Error(`Slack preparation is ${setup.status}; check its status before continuing`);
 }
-const invitation = await managementClient.slack.createInvitation(identityId);
-// Open invitation.invitationUrl in the installer's browser; keep it secret.
+const installation = await managementClient.slack.startInstallation(identityId);
+// Open installation.authorizationUrl in a browser; keep it secret.
 ```
 
 The sample bounds its preparation wait to two minutes. Pending setup can take
-longer; resume status reads later without repeatedly requesting invitations.
+longer; resume status reads later without repeatedly starting installation.
 For failed or unavailable setup, inspect the status before taking further action.
+`needs_credentials` requires saving valid credentials for the selected workspace.
+After browser approval, list connections again to confirm `connected`.
 
-`client.slack` also provides `listInvitations`, `revokeInvitation`, `disconnect`,
+`client.slack` also provides `listProvisioningWorkspaces`, `saveProvisioningWorkspace`, `disconnect`,
 `listConversations`, `openConversation`, `getConversation`, `getAction`, `getFile`,
 and `downloadFile` (returns `Uint8Array`). Live workspace operations use explicit connection IDs so a
 multi-workspace identity never silently picks a workspace.
@@ -1997,12 +2007,11 @@ await client.webhooks.subscriptions.update(subscription.id, {
 
 ### Slack behavior
 
-An existing identity can connect to multiple Slack workspaces. Organization management
-credentials create/revoke invitations and disconnect connections; claimed identity
+Organization management credentials save workspace configuration, prepare identity apps,
+start browser installations, and disconnect connections; claimed identity
 credentials can read and use their own connections. Installation availability does not
 mean preparation is complete or grant management permission; offer onboarding only
 in a management flow and check `setup.status` before continuing.
-Invitation links are returned once: open the full link in a browser and treat it as a secret. The browser page handles installation.
 Direct installation is also supported: `start_installation` (Python/Rust),
 `startInstallation` (TypeScript), or `slack installation start` returns a short-lived
 opaque authorization URL to open in a browser. Treat it as a secret; the browser

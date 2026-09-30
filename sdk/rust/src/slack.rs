@@ -1,4 +1,4 @@
-//! Live Slack reads and durable sends; use invitation URLs for browser onboarding.
+//! Slack workspace setup, live reads, and durable sends.
 //! Slack enums reject unrecognized values; a newer SDK may be required.
 //! Action/operation `Unknown` means terminal uncertainty, not a catch-all.
 use crate::error::{InkboxError, Result};
@@ -44,6 +44,8 @@ pub struct SlackConnectionsResponse {
     /// App existence, independent of identity enablement or workspace connections.
     #[serde(default)]
     pub application_created: bool,
+    #[serde(default)]
+    pub provisioning_workspace: Option<SlackProvisioningWorkspace>,
 }
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -53,6 +55,7 @@ pub enum SlackSetupState {
     Ready,
     Failed,
     Unavailable,
+    NeedsCredentials,
 }
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SlackSetupStatus {
@@ -61,15 +64,25 @@ pub struct SlackSetupStatus {
     pub retry_at: Option<String>,
     #[serde(default)]
     pub error_code: Option<String>,
+    #[serde(default)]
+    pub provisioning_workspace_id: Option<Uuid>,
+}
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum SlackProvisioningWorkspaceStatus {
+    Ready,
+    ReauthorizationRequired,
 }
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SlackInvitation {
+pub struct SlackProvisioningWorkspace {
     pub id: Uuid,
-    pub identity_id: Uuid,
-    pub status: String,
-    pub expires_at: String,
-    #[serde(default)]
-    pub invitation_url: Option<String>,
+    pub workspace_id: String,
+    pub workspace_name: String,
+    pub user_id: String,
+    pub status: SlackProvisioningWorkspaceStatus,
+    pub token_expires_at: Option<String>,
+    pub created_at: String,
+    pub updated_at: String,
 }
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SlackInstallation {
@@ -163,21 +176,39 @@ impl SlackResource {
             &[("identity_id", identity_id.to_string())],
         )?)?)
     }
-    /// Organization management only; prepare without waiting, then read list_connections for status.
-    pub fn start_setup(&self, identity_id: Uuid) -> Result<SlackSetupStatus> {
+    /// List saved workspace metadata; credentials are never returned.
+    pub fn list_provisioning_workspaces(&self) -> Result<Vec<SlackProvisioningWorkspace>> {
+        #[derive(Deserialize)]
+        struct Workspaces {
+            workspaces: Vec<SlackProvisioningWorkspace>,
+        }
+        let response: Workspaces =
+            serde_json::from_value(self.http.get("/slack/provisioning-workspaces", NO_QUERY)?)?;
+        Ok(response.workspaces)
+    }
+    /// Organization admins only. Verify and save app-configuration credentials.
+    pub fn save_provisioning_workspace(
+        &self,
+        access_token: &str,
+        refresh_token: &str,
+    ) -> Result<SlackProvisioningWorkspace> {
         Ok(serde_json::from_value(self.http.post(
-            "/slack/applications/setup",
-            Some(&json!({"identity_id": identity_id})),
+            "/slack/provisioning-workspaces",
+            Some(&json!({"access_token": access_token, "refresh_token": refresh_token})),
             NO_QUERY,
         )?)?)
     }
-    /// Open the one-time invitation_url in a browser. Organization management only.
-    pub fn create_invitation(
+    /// Prepare the identity app in a saved workspace; read list_connections for status.
+    pub fn start_setup(
         &self,
         identity_id: Uuid,
-        expires_in_seconds: Option<u32>,
-    ) -> Result<SlackInvitation> {
-        Ok(serde_json::from_value(self.http.post("/slack/invitations", Some(&json!({"identity_id":identity_id, "expires_in_seconds":expires_in_seconds.unwrap_or(86400)})), NO_QUERY)?)?)
+        provisioning_workspace_id: Uuid,
+    ) -> Result<SlackSetupStatus> {
+        Ok(serde_json::from_value(self.http.post(
+            "/slack/applications/setup",
+            Some(&json!({"identity_id": identity_id, "provisioning_workspace_id": provisioning_workspace_id})),
+            NO_QUERY,
+        )?)?)
     }
     /// Open the short-lived opaque URL in a browser; do not log it. Organization management only.
     pub fn start_installation(
@@ -206,19 +237,6 @@ impl SlackResource {
         Ok(serde_json::from_value(self.http.post(
             "/slack/installations",
             Some(&body),
-            NO_QUERY,
-        )?)?)
-    }
-    pub fn list_invitations(&self, identity_id: Uuid) -> Result<Vec<SlackInvitation>> {
-        Ok(serde_json::from_value(self.http.get(
-            "/slack/invitations",
-            &[("identity_id", identity_id.to_string())],
-        )?)?)
-    }
-    pub fn revoke_invitation(&self, id: Uuid) -> Result<SlackInvitation> {
-        Ok(serde_json::from_value(self.http.post::<Value>(
-            &format!("/slack/invitations/{id}/revoke"),
-            None,
             NO_QUERY,
         )?)?)
     }

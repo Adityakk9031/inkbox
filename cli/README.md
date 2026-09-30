@@ -1053,29 +1053,35 @@ inkbox slack file download FEXAMPLE --connection-id 11111111-1111-4111-8111-1111
   --output example.bin
 ```
 
-Onboarding is a separate organization-management task. With organization-management
-credentials configured, create an invitation or start a direct browser installation:
+Onboarding is a separate organization-management task. An organization admin saves
+both app-configuration tokens for the target workspace, then prepares the identity's app:
 
 ```bash
-inkbox slack setup start --identity example-agent
-# If preparation is pending, check it with slack connection list before installing.
-inkbox slack invitation create --identity example-agent
-# Open the returned invitationUrl in the installer's browser; keep it secret.
-# Alternatively, open the secret authorizationUrl from:
+# credentials.json contains access_token and refresh_token. Keep it private.
+inkbox slack provisioning-workspace save --credentials-file credentials.json
+inkbox slack provisioning-workspace list
+inkbox slack setup start --identity example-agent \
+  --provisioning-workspace-id 44444444-4444-4444-8444-444444444444
+# If pending, check with slack connection list before installing.
 inkbox slack installation start --identity example-agent
+# Open authorizationUrl in a browser. After approval, list connections to confirm.
 ```
 
+Use `--credentials-file -` to read JSON from stdin. Tokens are never returned.
+Reuse the saved workspace ID for subsequent identity apps. Each app is bound to
+its selected workspace. `needs_credentials` means its credentials need attention.
+
 Installation availability does not imply preparation is ready or grant management permission.
-`setup start`, `connection list`, `invitation create/list`, and `installation start` accept exactly
-one of `-i/--identity <handle>` or `--identity-id <uuid>`. Handles use the existing
-identity lookup; the UUID form avoids that lookup.
+`setup start`, `connection list`, and `installation start` accept exactly one of
+`-i/--identity <handle>` or `--identity-id <uuid>`. Handles use the existing identity
+lookup; the UUID form avoids that lookup.
 
 | Command group | Operations |
 | --- | --- |
 | `slack setup` | `start` (preparation status is returned by `connection list`) |
 | `slack search` | Search retained messages across an identity's workspace connections |
 | `slack connection` | `list`, `disconnect` |
-| `slack invitation` | `create`, `list`, `revoke <invitation-id>` |
+| `slack provisioning-workspace` | `list`, `save --credentials-file <path>` |
 | `slack conversation` | `list`, `get`, `open` (repeat `--user-id`) |
 | `slack message` | `list`, `send` |
 | `slack action` | `get <action-id>` |
@@ -1084,7 +1090,7 @@ identity lookup; the UUID form avoids that lookup.
 All conversation/message/action/file operations require `--connection-id`.
 Use `--conversation-id` for an existing conversation, `--thread-ts` for a thread,
 `--cursor` for another page, and `--json` for structured output. Downloads refuse to
-overwrite an existing path. Invitation creation supports `--expires-in-seconds`.
+overwrite an existing path.
 
 ```bash
 inkbox webhook subscription create --agent-identity-id 22222222-2222-4222-8222-222222222222 \
@@ -1099,12 +1105,11 @@ the supplied event types replace the subscription's full event list.
 
 ### Slack behavior
 
-An existing identity can connect to multiple Slack workspaces. Organization management
-credentials create/revoke invitations and disconnect connections; claimed identity
+Organization management credentials prepare identity apps in saved workspaces,
+start installations, and disconnect connections; claimed identity
 credentials can read and use their own connections. Installation availability does not
 mean preparation is complete or grant management permission; offer onboarding only
 in a management flow and check `setup.status` before continuing.
-Invitation links are returned once: open the full link in a browser and treat it as a secret. The browser page handles installation.
 Direct installation is also supported: `start_installation` (Python/Rust),
 `startInstallation` (TypeScript), or `slack installation start` returns a short-lived
 opaque authorization URL to open in a browser. Treat it as a secret; the browser

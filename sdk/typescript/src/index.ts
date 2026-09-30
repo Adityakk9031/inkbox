@@ -468,7 +468,7 @@ export type {
   SlackConnection,
   SlackConnectionsResponse,
   SlackSetupStatus,
-  SlackInvitation,
+  SlackProvisioningWorkspace,
   SlackInstallation,
   SlackAction,
   SlackConversationsResponse,

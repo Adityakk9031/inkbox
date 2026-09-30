@@ -6,6 +6,14 @@ Versions move in lockstep across `@inkbox/sdk` (TypeScript), `inkbox`
 
 ## Unreleased
 
+- Add organization-owned provisioning workspaces across Python, TypeScript, Rust, and CLI.
+  Save both configuration tokens once and reuse verified workspace metadata. Credentials
+  are write-only; CLI input uses a private JSON file or stdin.
+- Require a saved provisioning-workspace UUID for app setup and expose selected workspace
+  metadata plus `needs_credentials` recovery. Browser installation targets that workspace.
+  Rust response struct literals need `provisioning_workspace` and setup status literals
+  need `provisioning_workspace_id` (both optional). Remove the unreleased Slack invitation API.
+
 - Report `application_created` / `applicationCreated` on Slack connection reads,
   independently of enablement or connected workspaces. Older responses default to
   `false`. Rust `SlackConnectionsResponse` literals need `application_created`.
@@ -14,7 +22,7 @@ Versions move in lockstep across `@inkbox/sdk` (TypeScript), `inkbox`
   messages at or before the target; thread reads include the target and following
   replies. `window` reports either direction. Rust keeps its existing string field.
 
-- Document bounded app preparation before invitation creation, coordinated package and
+- Document bounded app preparation before installation, coordinated package and
   skills availability, and typed Slack idempotency conflicts.
 
 - Preserve optional `page_boundary` / `pageBoundary` on retained Slack message
@@ -59,14 +67,14 @@ Versions move in lockstep across `@inkbox/sdk` (TypeScript), `inkbox`
 - Add configurable retained-history settings, message search, bounded backfill/restart,
   coverage, and purge with Python, TypeScript, Rust, and CLI parity.
 
-- Add Slack workspace invitations/connections, live conversations/messages, durable
+- Add Slack workspace setup/connections, live conversations/messages, durable
   idempotent sends/actions, and byte-preserving file downloads across the SDKs and CLI.
 - Add 23 Slack webhook event types. Incoming messages use `slack.dm_received`,
   `slack.group_dm_received`, `slack.channel_message_received`, `slack.mention_received`,
   and `slack.thread_reply_received` through ordinary event selection. Overlapping
   selections produce one logical delivery per subscription, prioritizing mention, thread,
   DM, group DM, then channel among selected matches.
-- Document browser invitation onboarding, terminal unknown send outcomes, and
+- Document browser installation onboarding, terminal unknown send outcomes, and
   metadata-only Slack delivery diagnostics without historical replay.
 
 ## 0.7.10 - Retry-safe message requests

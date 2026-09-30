@@ -1,4 +1,4 @@
-/** Live Slack reads and durable sends. Open invitation URLs for browser onboarding. */
+/** Slack workspace setup, live reads, and durable sends. */
 import type { HttpTransport } from "./_http.js";
 import { SlackOperationsResource } from "./slack-operations.js";
 
@@ -20,18 +20,23 @@ export interface SlackConnectionsResponse {
   setup?: SlackSetupStatus | null;
   /** App existence, independent of identity enablement or workspace connections. */
   applicationCreated?: boolean;
+  provisioningWorkspace?: SlackProvisioningWorkspace | null;
 }
 export interface SlackSetupStatus {
-  status: "not_started" | "pending" | "ready" | "failed" | "unavailable";
+  status: "not_started" | "pending" | "ready" | "failed" | "unavailable" | "needs_credentials";
   retryAt: Date | null;
-  errorCode: "setup_failed" | "outcome_unknown" | "quota_exceeded" | null;
+  errorCode: "setup_failed" | "outcome_unknown" | "quota_exceeded" | "credentials_required" | null;
+  provisioningWorkspaceId: string | null;
 }
-export interface SlackInvitation {
+export interface SlackProvisioningWorkspace {
   id: string;
-  identityId: string;
-  status: string;
-  expiresAt: Date;
-  invitationUrl: string | null;
+  workspaceId: string;
+  workspaceName: string;
+  userId: string;
+  status: "ready" | "reauthorization_required";
+  tokenExpiresAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
 }
 export interface SlackInstallation {
   authorizationUrl: string;
@@ -90,18 +95,23 @@ interface RawSetupStatus {
   status: SlackSetupStatus["status"];
   retry_at?: string | null;
   error_code?: SlackSetupStatus["errorCode"];
+  provisioning_workspace_id?: string | null;
 }
 const setupStatus = (r: RawSetupStatus): SlackSetupStatus => ({
   status: r.status,
   retryAt: r.retry_at ? new Date(r.retry_at) : null,
   errorCode: r.error_code ?? null,
+  provisioningWorkspaceId: r.provisioning_workspace_id ?? null,
 });
-interface RawInvitation {
+interface RawProvisioningWorkspace {
   id: string;
-  identity_id: string;
-  status: string;
-  expires_at: string;
-  invitation_url?: string | null;
+  workspace_id: string;
+  workspace_name: string;
+  user_id: string;
+  status: SlackProvisioningWorkspace["status"];
+  token_expires_at: string | null;
+  created_at: string;
+  updated_at: string;
 }
 interface RawAction {
   id: string;
@@ -122,12 +132,15 @@ const connection = (r: RawConnection): SlackConnection => ({
   scopes: r.scopes,
   createdAt: new Date(r.created_at),
 });
-const invitation = (r: RawInvitation): SlackInvitation => ({
+const provisioningWorkspace = (r: RawProvisioningWorkspace): SlackProvisioningWorkspace => ({
   id: r.id,
-  identityId: r.identity_id,
+  workspaceId: r.workspace_id,
+  workspaceName: r.workspace_name,
+  userId: r.user_id,
   status: r.status,
-  expiresAt: new Date(r.expires_at),
-  invitationUrl: r.invitation_url ?? null,
+  tokenExpiresAt: r.token_expires_at ? new Date(r.token_expires_at) : null,
+  createdAt: new Date(r.created_at),
+  updatedAt: new Date(r.updated_at),
 });
 const action = (r: RawAction): SlackAction => ({
   id: r.id,
@@ -172,45 +185,43 @@ export class SlackResource extends SlackOperationsResource {
       installation_available: boolean;
       setup?: RawSetupStatus | null;
       application_created?: boolean;
+      provisioning_workspace?: RawProvisioningWorkspace | null;
     }>("/slack/connections", { identity_id: identityId });
     return {
       connections: r.connections.map(connection),
       installationAvailable: r.installation_available,
       setup: r.setup ? setupStatus(r.setup) : null,
       applicationCreated: r.application_created ?? false,
+      provisioningWorkspace: r.provisioning_workspace ? provisioningWorkspace(r.provisioning_workspace) : null,
     };
   }
-  /** Organization management only; prepare without waiting, then read listConnections for status. */
-  async startSetup(identityId: string): Promise<SlackSetupStatus> {
-    return setupStatus(await this.http.post<RawSetupStatus>(
-      "/slack/applications/setup", { identity_id: identityId },
+  /** List saved workspace metadata; credentials are never returned. */
+  async listProvisioningWorkspaces(): Promise<SlackProvisioningWorkspace[]> {
+    const r = await this.http.get<{ workspaces: RawProvisioningWorkspace[] }>(
+      "/slack/provisioning-workspaces",
+    );
+    return r.workspaces.map(provisioningWorkspace);
+  }
+  /** Organization admins only. Verify and save app-configuration credentials. */
+  async saveProvisioningWorkspace(options: {
+    accessToken: string;
+    refreshToken: string;
+  }): Promise<SlackProvisioningWorkspace> {
+    return provisioningWorkspace(await this.http.post<RawProvisioningWorkspace>(
+      "/slack/provisioning-workspaces", {
+        access_token: options.accessToken,
+        refresh_token: options.refreshToken,
+      },
     ));
   }
-  /** Organization management only. Open invitationUrl in the installer's browser. */
-  async createInvitation(
-    identityId: string,
-    options: { expiresInSeconds?: number } = {},
-  ): Promise<SlackInvitation> {
-    return invitation(
-      await this.http.post("/slack/invitations", {
+  /** Prepare the identity app in a saved workspace; read listConnections for status. */
+  async startSetup(identityId: string, provisioningWorkspaceId: string): Promise<SlackSetupStatus> {
+    return setupStatus(await this.http.post<RawSetupStatus>(
+      "/slack/applications/setup", {
         identity_id: identityId,
-        expires_in_seconds: options.expiresInSeconds ?? 86400,
-      }),
-    );
-  }
-  async listInvitations(identityId: string): Promise<SlackInvitation[]> {
-    return (
-      await this.http.get<RawInvitation[]>("/slack/invitations", {
-        identity_id: identityId,
-      })
-    ).map(invitation);
-  }
-  async revokeInvitation(id: string): Promise<SlackInvitation> {
-    return invitation(
-      await this.http.post(
-        `/slack/invitations/${encodeURIComponent(id)}/revoke`,
-      ),
-    );
+        provisioning_workspace_id: provisioningWorkspaceId,
+      },
+    ));
   }
   /** Removes Inkbox authority; does not uninstall the Slack app. */
   async disconnect(connectionId: string): Promise<SlackConnection> {

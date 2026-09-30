@@ -60,27 +60,21 @@ def test_all_slack_operations_exact_wire(wire):
         query={"identity_id": IDENTITY_ID},
     )
     assert not result.installation_available and str(result.connections[0].id) == C
-    result = check(
-        DATA["invitation"],
-        lambda: c.slack.create_invitation(IDENTITY_ID, expires_in_seconds=300),
-        "POST",
-        "/invitations",
-        {"identity_id": IDENTITY_ID, "expires_in_seconds": 300},
+    workspace = check(
+        DATA["provisioning_workspace"],
+        lambda: c.slack.save_provisioning_workspace(access_token="synthetic-access", refresh_token="synthetic-refresh"),
+        "POST", "/provisioning-workspaces",
+        {"access_token": "synthetic-access", "refresh_token": "synthetic-refresh"},
     )
-    assert "#token=" in result.invitation_url
-    check(
-        [dict(DATA["invitation"], invitation_url=None)],
-        lambda: c.slack.list_invitations(IDENTITY_ID),
-        "GET",
-        "/invitations",
-        query={"identity_id": IDENTITY_ID},
+    assert str(workspace.id) == DATA["provisioning_workspace"]["id"]
+    assert workspace.token_expires_at.tzinfo is not None
+    assert not hasattr(workspace, "access_token")
+    saved = check(
+        {"workspaces": [DATA["provisioning_workspace"]]},
+        lambda: c.slack.list_provisioning_workspaces(),
+        "GET", "/provisioning-workspaces",
     )
-    check(
-        DATA["invitation"],
-        lambda: c.slack.revoke_invitation(DATA["invitation"]["id"]),
-        "POST",
-        f"/invitations/{DATA['invitation']['id']}/revoke",
-    )
+    assert saved == [workspace]
     check(
         DATA["connection"],
         lambda: c.slack.disconnect(C),
@@ -160,7 +154,7 @@ def test_all_slack_operations_exact_wire(wire):
         )
         == b"\x00\xff\x80\x01"
     )
-    assert len(requests) == 13
+    assert len(requests) == 12
 
 
 @pytest.mark.parametrize("status", [409, 429, 503])
@@ -326,3 +320,23 @@ def test_context_preserves_direction_and_thread_selection(wire, thread_ts, windo
     if thread_ts is not None:
         expected["thread_ts"] = thread_ts
     assert dict(requests[0].url.params) == expected
+
+
+@pytest.mark.parametrize("status", [403, 409, 422, 429, 503])
+def test_workspace_save_failures_are_not_retried(wire, status):
+    client, requests, replies = wire
+    replies.append((status, {"detail": "Workspace credentials could not be saved"}))
+    with pytest.raises(InkboxAPIError) as error:
+        client.slack.save_provisioning_workspace(access_token="synthetic-access", refresh_token="synthetic-refresh")
+    assert error.value.status_code == status
+    assert len(requests) == 1
+
+
+def test_saved_workspace_dates_and_no_credential_echo(wire):
+    client, _, replies = wire
+    replies.append({"workspaces": [{**DATA["provisioning_workspace"], "token_expires_at": None,
+        "status": "reauthorization_required", "access_token": "must-not-surface", "refresh_token": "must-not-surface"}]})
+    workspace = client.slack.list_provisioning_workspaces()[0]
+    assert workspace.token_expires_at is None
+    assert workspace.updated_at.tzinfo is not None
+    assert "must-not-surface" not in repr(workspace)

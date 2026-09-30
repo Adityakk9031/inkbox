@@ -631,10 +631,10 @@ or `inkbox imessage get <message-id> --identity <handle>`.
 
 ## Slack workspace connections
 
-Use an existing Inkbox identity across multiple Slack workspace connections. The
+Connect an existing Inkbox identity to your Slack workspace. The
 [Python SDK](sdk/python/README.md#slack), [TypeScript SDK](sdk/typescript/README.md#slack),
-[Rust SDK](sdk/rust/README.md#slack), and [CLI](cli/README.md#slack) support invitation
-onboarding and direct browser handoffs, live conversations/history, durable message
+[Rust SDK](sdk/rust/README.md#slack), and [CLI](cli/README.md#slack) support reusable organization-owned workspace setup
+and direct browser handoffs, live conversations/history, durable message
 and utility actions, general file uploads/downloads, and identity-owned Slack
 webhooks with five selectable incoming-message events. Identity-wide message search spans workspace connections by default.
 Enable Slack on an identity at creation or update before connecting workspaces.

@@ -22,12 +22,12 @@ def test_setup_request_and_nested_connection_state():
     with Inkbox(api_key="synthetic-test-key", base_url="https://example.com") as client:
         client._api_http._client.close()
         client._api_http._client = httpx.Client(base_url="https://example.com/api/v1", transport=httpx.MockTransport(handle))
-        setup = client.slack.start_setup(DATA["identity_id"])
+        setup = client.slack.start_setup(DATA["identity_id"], DATA["provisioning_workspace_id"])
         assert isinstance(setup, SlackSetupStatus)
         assert setup.retry_at == datetime(2026, 10, 1, 12, tzinfo=timezone.utc)
         assert requests[0].method == "POST"
         assert requests[0].url.path == "/api/v1/slack/applications/setup"
-        assert json.loads(requests[0].content) == {"identity_id": DATA["identity_id"]}
+        assert json.loads(requests[0].content) == {"identity_id": DATA["identity_id"], "provisioning_workspace_id": DATA["provisioning_workspace_id"]}
         current = client.slack.list_connections(DATA["identity_id"])
         assert current.setup == setup
         assert current.application_created is True
@@ -56,3 +56,10 @@ def test_sender_profile_fields_are_optional_wire_fields():
     sender = DATA["webhook"]["data"]["actor_profile"]
     assert sender["profile"]["email"] == "person@example.com"
     assert sender["is_bot"] is False and sender["tz_offset"] == 0
+
+
+def test_needs_credentials_and_selected_workspace_parse():
+    from inkbox.slack import _parse
+    setup = _parse(SlackSetupStatus, {"status": "needs_credentials", "error_code": "credentials_required", "provisioning_workspace_id": None})
+    assert setup.status == "needs_credentials"
+    assert setup.provisioning_workspace_id is None

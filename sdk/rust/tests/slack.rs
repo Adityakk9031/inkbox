@@ -35,38 +35,35 @@ fn all_operations_and_binary_download_match_the_wire() {
     assert!(!response.installation_available);
     assert_eq!(response.connections[0].id, c);
     list.assert();
-    let invite = server.mock(|when, then| {
+    let save = server.mock(|when, then| {
         when.method(POST)
-            .path("/api/v1/slack/invitations")
-            .json_body(json!({"identity_id":identity,"expires_in_seconds":300}));
-        then.status(201).json_body(f["invitation"].clone());
+            .path("/api/v1/slack/provisioning-workspaces")
+            .json_body(
+                json!({"access_token":"synthetic-access","refresh_token":"synthetic-refresh"}),
+            );
+        then.status(200)
+            .json_body(f["provisioning_workspace"].clone());
     });
-    let inv = client
+    let workspace = client
         .slack()
-        .create_invitation(identity, Some(300))
+        .save_provisioning_workspace("synthetic-access", "synthetic-refresh")
         .unwrap();
-    assert!(inv.invitation_url.unwrap().contains("#token="));
-    invite.assert();
-    let invites = server.mock(|when, then| {
+    assert_eq!(
+        workspace.id,
+        id(f["provisioning_workspace"]["id"].as_str().unwrap())
+    );
+    save.assert();
+    let saved = server.mock(|when, then| {
         when.method(GET)
-            .path("/api/v1/slack/invitations")
-            .query_param("identity_id", identity.to_string());
-        then.status(200).json_body(json!([f["invitation"]]));
+            .path("/api/v1/slack/provisioning-workspaces");
+        then.status(200)
+            .json_body(json!({"workspaces": [f["provisioning_workspace"]]}));
     });
-    assert_eq!(client.slack().list_invitations(identity).unwrap().len(), 1);
-    invites.assert();
-    let revoke = server.mock(|when, then| {
-        when.method(POST).path(format!(
-            "/api/v1/slack/invitations/{}/revoke",
-            f["invitation"]["id"].as_str().unwrap()
-        ));
-        then.status(200).json_body(f["invitation"].clone());
-    });
-    client
-        .slack()
-        .revoke_invitation(id(f["invitation"]["id"].as_str().unwrap()))
-        .unwrap();
-    revoke.assert();
+    assert_eq!(
+        client.slack().list_provisioning_workspaces().unwrap()[0].id,
+        workspace.id
+    );
+    saved.assert();
     let disconnect = server.mock(|when, then| {
         when.method(POST).path(format!("{base}/disconnect"));
         then.status(200).json_body(f["connection"].clone());

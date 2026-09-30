@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
-import { readFile, mkdtemp, rm } from "node:fs/promises";
+import { readFile, writeFile, mkdtemp, rm } from "node:fs/promises";
 import http from "node:http";
 import os from "node:os";
 import path from "node:path";
@@ -13,15 +13,16 @@ const f = JSON.parse(
     "utf8",
   ),
 );
-function run(args) {
-  return new Promise((resolve) =>
-    execFile(
+function run(args, stdin) {
+  return new Promise((resolve) => {
+    const child = execFile(
       process.execPath,
       [cli, ...args],
       { env: { ...process.env, NODE_USE_ENV_PROXY: "0" }, timeout: 15000 },
       (error, stdout, stderr) => resolve({ error, stdout, stderr }),
-    ),
-  );
+    );
+    child.stdin.end(stdin);
+  });
 }
 test("Slack CLI sends exact requests, exposes onboarding and preserves file bytes", async () => {
   const requests = [];
@@ -66,9 +67,9 @@ test("Slack CLI sends exact requests, exposes onboarding and preserves file byte
   }
   try {
     const setup = await check(
-      ["slack", "setup", "start", "--identity-id", i],
+      ["slack", "setup", "start", "--identity-id", i, "--provisioning-workspace-id", f.provisioning_workspace.id],
       { status: "pending", retry_at: "2026-10-01T12:00:00Z", error_code: null },
-      "POST", "/api/v1/slack/applications/setup", { identity_id: i },
+      "POST", "/api/v1/slack/applications/setup", { identity_id: i, provisioning_workspace_id: f.provisioning_workspace.id },
     );
     assert.equal(setup.status, "pending");
     assert.equal(setup.retryAt, "2026-10-01T12:00:00.000Z");
@@ -78,33 +79,18 @@ test("Slack CLI sends exact requests, exposes onboarding and preserves file byte
       "GET",
       `/api/v1/slack/connections?identity_id=${i}`,
     );
-    const invite = await check(
-      [
-        "slack",
-        "invitation",
-        "create",
-        "--identity-id",
-        i,
-        "--expires-in-seconds",
-        "300",
-      ],
-      f.invitation,
-      "POST",
-      "/api/v1/slack/invitations",
-      { identity_id: i, expires_in_seconds: 300 },
+    const credentialsFile = path.join(tmp, "credentials.json");
+    await writeFile(credentialsFile, JSON.stringify({ access_token: "synthetic-access", refresh_token: "synthetic-refresh" }), { mode: 0o600 });
+    const workspace = await check(
+      ["slack", "provisioning-workspace", "save", "--credentials-file", credentialsFile],
+      f.provisioning_workspace, "POST", "/api/v1/slack/provisioning-workspaces",
+      { access_token: "synthetic-access", refresh_token: "synthetic-refresh" },
     );
-    assert.match(invite.invitationUrl, /#token=/);
+    assert.equal(workspace.workspaceId, "TEXAMPLE");
+    assert.equal(workspace.accessToken, undefined);
     await check(
-      ["slack", "invitation", "list", "--identity-id", i],
-      [f.invitation],
-      "GET",
-      `/api/v1/slack/invitations?identity_id=${i}`,
-    );
-    await check(
-      ["slack", "invitation", "revoke", f.invitation.id],
-      f.invitation,
-      "POST",
-      `/api/v1/slack/invitations/${f.invitation.id}/revoke`,
+      ["slack", "provisioning-workspace", "list"],
+      { workspaces: [f.provisioning_workspace] }, "GET", "/api/v1/slack/provisioning-workspaces",
     );
     await check(
       ["slack", "connection", "disconnect", "--connection-id", c],
@@ -349,11 +335,11 @@ test("identity-scoped Slack commands resolve handles and reject ambiguous select
   ];
   const cases = [
     {
-      args: ["setup", "start"],
+      args: ["setup", "start", "--provisioning-workspace-id", f.provisioning_workspace.id],
       response: { status: "ready", retry_at: null, error_code: null },
       method: "POST",
       url: "/api/v1/slack/applications/setup",
-      body: { identity_id: identityId },
+      body: { identity_id: identityId, provisioning_workspace_id: f.provisioning_workspace.id },
     },
     {
       args: ["search", "--q", "message"],
@@ -368,20 +354,6 @@ test("identity-scoped Slack commands resolve handles and reject ambiguous select
       response: { connections: [], installation_available: false },
       method: "GET",
       url: `/api/v1/slack/connections?identity_id=${identityId}`,
-      body: null,
-    },
-    {
-      args: ["invitation", "create", "--expires-in-seconds", "300"],
-      response: f.invitation,
-      method: "POST",
-      url: "/api/v1/slack/invitations",
-      body: { identity_id: identityId, expires_in_seconds: 300 },
-    },
-    {
-      args: ["invitation", "list"],
-      response: [],
-      method: "GET",
-      url: `/api/v1/slack/invitations?identity_id=${identityId}`,
       body: null,
     },
     {
@@ -436,19 +408,58 @@ test("identity-scoped Slack commands resolve handles and reject ambiguous select
     const before = requests.length;
     const missingIdentity = await run([
       ...globals,
-      "invitation",
-      "create",
+      "installation",
+      "start",
       "-i",
       "example-agent",
     ]);
     assert.ok(missingIdentity.error);
-    assert.equal(requests.length, before + 1); // Failed lookup must not create an invitation.
+    assert.equal(requests.length, before + 1); // Failed lookup must not start installation.
     assert.equal(requests.at(-1).url, "/api/v1/identities/example-agent");
     const beforeSearch = requests.length;
     const failedSearch = await run([...globals, "search", "--q", "message", "--identity", "example-agent"]);
     assert.ok(failedSearch.error);
     assert.equal(requests.length, beforeSearch + 1);
     assert.equal(requests.at(-1).url, "/api/v1/identities/example-agent");
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+  }
+});
+
+
+test("Slack provisioning credentials use stdin or a file without leaking errors", async () => {
+  const requests = [];
+  let responseStatus = 200;
+  const server = http.createServer(async (req, res) => {
+    let body = "";
+    for await (const chunk of req) body += chunk;
+    requests.push(JSON.parse(body));
+    res.writeHead(responseStatus, { "Content-Type": "application/json" });
+    res.end(JSON.stringify(responseStatus === 200 ? f.provisioning_workspace : {
+      detail: { error: "invalid_credentials", message: "synthetic-access synthetic-refresh" },
+    }));
+  });
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const args = ["--api-key", "synthetic-test-key", "--base-url", `http://127.0.0.1:${server.address().port}`, "--json",
+    "slack", "provisioning-workspace", "save", "--credentials-file", "-"];
+  const credentials = { access_token: "synthetic-access", refresh_token: "synthetic-refresh" };
+  try {
+    const success = await run(args, JSON.stringify(credentials));
+    assert.equal(success.error, null, success.stderr);
+    assert.deepEqual(requests, [credentials]);
+    assert.equal(JSON.parse(success.stdout).workspaceId, "TEXAMPLE");
+    responseStatus = 422;
+    const failed = await run(args, JSON.stringify(credentials));
+    assert.ok(failed.error);
+    assert.doesNotMatch(failed.stderr + failed.stdout, /synthetic-access|synthetic-refresh/);
+    assert.match(failed.stderr, /invalid_credentials/);
+    const before = requests.length;
+    for (const raw of ["{synthetic-access", JSON.stringify({ access_token: "synthetic-access" }), "[]", "x".repeat(17000)]) {
+      const invalid = await run(args, raw);
+      assert.ok(invalid.error);
+      assert.doesNotMatch(invalid.stderr + invalid.stdout, /synthetic-access|synthetic-refresh/);
+    }
+    assert.equal(requests.length, before);
   } finally {
     await new Promise((resolve) => server.close(resolve));
   }

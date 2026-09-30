@@ -1,9 +1,10 @@
 import { registerSlackOperationCommands } from "./slack-operations.js";
-import { writeFile } from "node:fs/promises";
+import { readFile, stat, writeFile } from "node:fs/promises";
 import { Command, InvalidArgumentError } from "commander";
 import { createClient, getGlobalOpts } from "../client.js";
 import { output } from "../output.js";
 import { withErrorHandler } from "../errors.js";
+import { redactSecretError } from "../invitation-token.js";
 
 export function slackInteger(value: string): number {
   if (
@@ -45,22 +46,70 @@ const page = (c: Command): Command =>
     .option("--limit <n>", "One page size", slackInteger)
     .option("--cursor <cursor>", "Next-page cursor; no automatic pagination");
 
+async function readWorkspaceCredentials(file: string): Promise<{ accessToken: string; refreshToken: string }> {
+  const maxBytes = 16384;
+  let text = "";
+  if (file === "-") {
+    if (process.stdin.isTTY) throw new InvalidArgumentError("Provide credential JSON through stdin or a file.");
+    for await (const chunk of process.stdin) {
+      text += chunk.toString();
+      if (Buffer.byteLength(text) > maxBytes) throw new InvalidArgumentError("Credential JSON is too large.");
+    }
+  } else {
+    if ((await stat(file)).size > maxBytes) throw new InvalidArgumentError("Credential JSON is too large.");
+    text = await readFile(file, "utf8");
+  }
+  let value: unknown;
+  try { value = JSON.parse(text); }
+  catch { throw new InvalidArgumentError("Credential file must contain valid JSON."); }
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new InvalidArgumentError("Provide access_token and refresh_token in a JSON object.");
+  }
+  const data = value as Record<string, unknown>;
+  if (typeof data.access_token !== "string" || !data.access_token.trim()
+      || typeof data.refresh_token !== "string" || !data.refresh_token.trim()) {
+    throw new InvalidArgumentError("Both access_token and refresh_token are required.");
+  }
+  return { accessToken: data.access_token.trim(), refreshToken: data.refresh_token.trim() };
+}
+
 export function registerSlackCommands(program: Command): void {
   const slack = program
     .command("slack")
     .description(
       "Slack workspace connections, live conversations, messages, and files",
     );
+  const workspaces = slack.command("provisioning-workspace")
+    .description("Manage saved app-configuration workspaces for your organization");
+  workspaces.command("list")
+    .description("List saved workspace metadata; no credentials are returned")
+    .action(withErrorHandler(async function (this: Command) {
+      const opts = getGlobalOpts(this);
+      output(await createClient(opts).slack.listProvisioningWorkspaces(), { json: !!opts.json });
+    }));
+  workspaces.command("save")
+    .description("Verify and save configuration credentials (organization admins only)")
+    .requiredOption("--credentials-file <path>", "JSON file with access_token and refresh_token; use - for stdin")
+    .action(withErrorHandler(async function (this: Command, o: { credentialsFile: string }) {
+      const opts = getGlobalOpts(this);
+      const credentials = await readWorkspaceCredentials(o.credentialsFile);
+      try {
+        output(await createClient(opts).slack.saveProvisioningWorkspace(credentials), { json: !!opts.json });
+      } catch (error) {
+        throw redactSecretError(error, credentials.accessToken, credentials.refreshToken);
+      }
+    }));
   const setup = slack
     .command("setup")
     .description("Organization management: prepare an identity's Slack app");
   identity(setup.command("start"))
     .description("Start preparation without waiting; use connection list to check progress")
+    .requiredOption("--provisioning-workspace-id <id>", "Saved provisioning workspace UUID")
     .action(
-      withErrorHandler(async function (this: Command, o: IdentityOptions) {
+      withErrorHandler(async function (this: Command, o: IdentityOptions & { provisioningWorkspaceId: string }) {
         const opts = getGlobalOpts(this);
         const client = createClient(opts);
-        output(await client.slack.startSetup(await resolveIdentityId(client, o)), {
+        output(await client.slack.startSetup(await resolveIdentityId(client, o), o.provisioningWorkspaceId), {
           json: !!opts.json,
         });
       }),
@@ -129,55 +178,6 @@ export function registerSlackCommands(program: Command): void {
       });
     }),
   );
-  const invites = slack
-    .command("invitation")
-    .description("Organization management: workspace installation invitations");
-  identity(
-    invites
-      .command("create")
-      .description(
-        "Create a one-time invitation URL; open it in the installer's browser",
-      ),
-  )
-    .option(
-      "--expires-in-seconds <n>",
-      "Invitation lifetime: 300..604800 seconds (default 86400)",
-      slackInteger,
-    )
-    .action(
-      withErrorHandler(async function (
-        this: Command,
-        o: IdentityOptions & { expiresInSeconds?: number },
-      ) {
-        const opts = getGlobalOpts(this);
-        const client = createClient(opts);
-        output(
-          await client.slack.createInvitation(
-            await resolveIdentityId(client, o),
-            o,
-          ),
-          { json: !!opts.json },
-        );
-      }),
-    );
-  identity(
-    invites
-      .command("list")
-      .description(
-        "List invitation status; links are only returned at creation",
-      ),
-  ).action(
-    withErrorHandler(async function (this: Command, o: IdentityOptions) {
-      const opts = getGlobalOpts(this);
-      const client = createClient(opts);
-      output(
-        await client.slack.listInvitations(await resolveIdentityId(client, o)),
-        {
-          json: !!opts.json,
-        },
-      );
-    }),
-  );
   const installations = slack
     .command("installation")
     .description("Organization management: browser installation handoff");
@@ -207,17 +207,6 @@ export function registerSlackCommands(program: Command): void {
           ),
           { json: !!opts.json },
         );
-      }),
-    );
-  invites
-    .command("revoke <invitation-id>")
-    .description("Revoke an unconsumed invitation")
-    .action(
-      withErrorHandler(async function (this: Command, id: string) {
-        const opts = getGlobalOpts(this);
-        output(await createClient(opts).slack.revokeInvitation(id), {
-          json: !!opts.json,
-        });
       }),
     );
   const conversations = slack

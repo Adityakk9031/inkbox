@@ -1,4 +1,4 @@
-"""Live Slack connections and messaging. Use invitation URLs for browser onboarding."""
+"""Slack workspace setup, live connections, and messaging."""
 
 from __future__ import annotations
 
@@ -29,9 +29,10 @@ class SlackConnection:
 
 @dataclass
 class SlackSetupStatus:
-    status: Literal["not_started", "pending", "ready", "failed", "unavailable"]
+    status: Literal["not_started", "pending", "ready", "failed", "unavailable", "needs_credentials"]
     retry_at: datetime | None = None
-    error_code: Literal["setup_failed", "outcome_unknown", "quota_exceeded"] | None = None
+    error_code: Literal["setup_failed", "outcome_unknown", "quota_exceeded", "credentials_required"] | None = None
+    provisioning_workspace_id: UUID | None = None
 
 
 @dataclass
@@ -40,15 +41,19 @@ class SlackConnectionsResponse:
     installation_available: bool
     setup: SlackSetupStatus | None = None
     application_created: bool = False
+    provisioning_workspace: SlackProvisioningWorkspace | None = None
 
 
 @dataclass
-class SlackInvitation:
+class SlackProvisioningWorkspace:
     id: UUID
-    identity_id: UUID
-    status: str
-    expires_at: datetime
-    invitation_url: str | None = None
+    workspace_id: str
+    workspace_name: str
+    user_id: str
+    status: Literal["ready", "reauthorization_required"]
+    token_expires_at: datetime | None
+    created_at: datetime
+    updated_at: datetime
 
 
 @dataclass
@@ -93,11 +98,11 @@ class SlackFile:
 
 def _parse(cls, raw):
     data = {k: v for k, v in raw.items() if k in cls.__dataclass_fields__}
-    for key in ("id", "identity_id", "connection_id"):
-        if key in data and cls is not SlackFile:
+    for key in ("id", "identity_id", "connection_id", "provisioning_workspace_id"):
+        if data.get(key) is not None and cls is not SlackFile:
             data[key] = UUID(data[key])
-    for key in ("created_at", "expires_at"):
-        if key in data:
+    for key in ("created_at", "updated_at", "expires_at", "token_expires_at"):
+        if data.get(key) is not None:
             data[key] = datetime.fromisoformat(data[key])
     if data.get("retry_at") is not None:
         data["retry_at"] = datetime.fromisoformat(data["retry_at"])
@@ -123,31 +128,35 @@ class SlackResource(SlackOperationsMixin):
             data["installation_available"],
             _parse(SlackSetupStatus, data["setup"]) if data.get("setup") is not None else None,
             application_created=data.get("application_created", False),
+            provisioning_workspace=_parse(SlackProvisioningWorkspace, data["provisioning_workspace"])
+            if data.get("provisioning_workspace") is not None else None,
         )
 
-    def start_setup(self, identity_id: UUID | str) -> SlackSetupStatus:
-        """Organization management only; prepare without waiting, then read list_connections for status."""
-        return _parse(SlackSetupStatus, self._http.post(
-            "/slack/applications/setup", json={"identity_id": str(identity_id)}
+    def list_provisioning_workspaces(self) -> list[SlackProvisioningWorkspace]:
+        """List saved workspace metadata; credentials are never returned."""
+        return [_parse(SlackProvisioningWorkspace, row) for row in self._http.get(
+            "/slack/provisioning-workspaces"
+        )["workspaces"]]
+
+    def save_provisioning_workspace(
+        self, *, access_token: str, refresh_token: str
+    ) -> SlackProvisioningWorkspace:
+        """Organization admins only. Verify and save app-configuration credentials."""
+        return _parse(SlackProvisioningWorkspace, self._http.post(
+            "/slack/provisioning-workspaces",
+            json={"access_token": access_token, "refresh_token": refresh_token},
         ))
 
-    def create_invitation(
-        self, identity_id: UUID | str, *, expires_in_seconds: int = 86400
-    ) -> SlackInvitation:
-        """Create a one-time invitation URL to open in a browser (organization management only).
-
-        The invitation remains usable by its recipient until expiry or revocation.
-        """
-        return _parse(
-            SlackInvitation,
-            self._http.post(
-                "/slack/invitations",
-                json={
-                    "identity_id": str(identity_id),
-                    "expires_in_seconds": expires_in_seconds,
-                },
-            ),
-        )
+    def start_setup(
+        self, identity_id: UUID | str, provisioning_workspace_id: UUID | str
+    ) -> SlackSetupStatus:
+        """Prepare the identity app in a saved workspace; read list_connections for status."""
+        return _parse(SlackSetupStatus, self._http.post(
+            "/slack/applications/setup", json={
+                "identity_id": str(identity_id),
+                "provisioning_workspace_id": str(provisioning_workspace_id),
+            }
+        ))
 
     def start_installation(
         self,
@@ -168,22 +177,6 @@ class SlackResource(SlackOperationsMixin):
             body["return_url"] = return_url
         return _parse(
             SlackInstallation, self._http.post("/slack/installations", json=body)
-        )
-
-    def list_invitations(self, identity_id: UUID | str) -> list[SlackInvitation]:
-        return [
-            _parse(SlackInvitation, r)
-            for r in self._http.get(
-                "/slack/invitations", params={"identity_id": str(identity_id)}
-            )
-        ]
-
-    def revoke_invitation(self, invitation_id: UUID | str) -> SlackInvitation:
-        return _parse(
-            SlackInvitation,
-            self._http.post(
-                f"/slack/invitations/{quote(str(invitation_id), safe='')}/revoke"
-            ),
         )
 
     def disconnect(self, connection_id: UUID | str) -> SlackConnection:
