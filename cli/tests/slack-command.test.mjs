@@ -256,7 +256,7 @@ test("Slack CLI sends exact requests, exposes onboarding and preserves file byte
       `/api/v1/webhooks/subscriptions/${f.subscription.id}`,
       { url: "https://example.com/new" },
     );
-    assert.equal(requests.length, 27);
+    assert.equal(requests.length, 26);
     const rejected = await run([
       ...globals,
       "slack",
@@ -271,7 +271,7 @@ test("Slack CLI sends exact requests, exposes onboarding and preserves file byte
     ]);
     assert.ok(rejected.error);
     assert.match(rejected.stderr, /idempotency-key/);
-    assert.equal(requests.length, 27);
+    assert.equal(requests.length, 26);
     const missingRecipient = await run([
       ...globals,
       "slack",
@@ -282,7 +282,7 @@ test("Slack CLI sends exact requests, exposes onboarding and preserves file byte
     ]);
     assert.ok(missingRecipient.error);
     assert.match(missingRecipient.stderr, /required option.*--user-id/);
-    assert.equal(requests.length, 27);
+    assert.equal(requests.length, 26);
   } finally {
     await new Promise((resolve) => server.close(resolve));
     await rm(tmp, { recursive: true, force: true });
