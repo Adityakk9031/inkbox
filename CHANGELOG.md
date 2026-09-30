@@ -8,6 +8,7 @@ Versions move in lockstep across `@inkbox/sdk` (TypeScript), `inkbox`
 
 ## 0.7.11 - Slack workspace connections (unreleased)
 
+- Avoid competing tunnel reconnect attempts when the initial handshake closes early.
 - Support setup and installation with claimed agent keys for their own identity;
   clarify organization-member session and organization admin API-key permissions.
 - Expose immediate rate-limit guidance on Slack send results as `retry_after` /
