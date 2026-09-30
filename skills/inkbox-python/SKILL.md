@@ -1469,7 +1469,7 @@ See the [Slack API and onboarding guide](https://github.com/inkbox-ai/inkbox/blo
 Use an existing identity. Select a workspace explicitly for live reads and mutations.
 Installation availability does not imply preparation is ready or grant management permission.
 Organization management must save both app-configuration tokens for the target workspace,
-then enable Slack and prepare its app using that saved provisioning-workspace UUID.
+then prepare the identity’s app using that saved provisioning-workspace UUID.
 Use `save_provisioning_workspace` / `saveProvisioningWorkspace` or CLI
 `slack provisioning-workspace save --credentials-file <path>` (use `-` for stdin).
 Reuse safe metadata from `list_provisioning_workspaces` / `listProvisioningWorkspaces`.

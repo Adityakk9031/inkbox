@@ -916,7 +916,6 @@ use uuid::Uuid;
 
 let management_client = Inkbox::new("YOUR_ORGANIZATION_MANAGEMENT_API_KEY")?;
 let identity_id = Uuid::parse_str("22222222-2222-4222-8222-222222222222")?;
-// Enable Slack on this identity through organization management first.
 let workspace = management_client.slack().save_provisioning_workspace(
     &std::env::var("SLACK_CONFIGURATION_ACCESS_TOKEN")?,
     &std::env::var("SLACK_CONFIGURATION_REFRESH_TOKEN")?,
@@ -999,21 +998,9 @@ not send-outcome events. Native processing support depends on the workspace and 
 used as a fallback. Inspect capabilities for missing scopes before requesting an upgrade.
 Disconnect removes Inkbox authority, not the workspace's Slack app installation.
 
-Slack is disabled on newly created identities. Use `create_identity_with_channels`
-with `slack_enabled: Some(true)` at creation, or the identity’s `update_with_channels`
-method to enable or pause Slack. The `slack_enabled()` getter reports the current
-setting cached by create/get/update/refresh. The legacy `AgentIdentity::new`
-constructor receives no channel settings, so its cached Slack value starts as
-`false` even when the remote identity has Slack enabled. Use `new_with_channels`
-with a channel-aware response, or call `refresh()` before relying on that value.
-The normal client create/get paths already use channel-aware construction.
-Existing creation and update methods
-keep their signatures and leave Slack at its default or existing value. Legacy
-`AgentIdentitySummary` and `AgentIdentityData` struct literals also stay unchanged;
-use resource `get_with_channels` / `list_with_channels` (or client
-`list_identities_with_channels`) for `ChannelAgentIdentityData` responses that
-include `slack_enabled`. Disabling preserves connections and history; re-enabling
-resumes channel activity without importing missed messages.
+Slack setup creates the identity’s app directly in its selected workspace.
+No identity toggle is required. Connection responses report app creation,
+preparation readiness, and installation status separately.
 
 Retained history is separate from live reads and webhook diagnostics. All observed
 messages in conversations the connection can access are captured automatically,

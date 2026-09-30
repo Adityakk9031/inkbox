@@ -59,8 +59,6 @@ export interface CreateIdentityOptions {
    * service. Defaults server-side to `false`; pass `true` to opt in.
    */
   imessageEnabled?: boolean;
-  /** Enable Slack for this identity. Disabled by default; false pauses existing connections. */
-  slackEnabled?: boolean;
   /** Automatically share this identity's name and optional avatar on an attached dedicated iMessage line. */
   contactSharingEnabled?: boolean;
   /**
@@ -92,8 +90,6 @@ export interface UpdateIdentityOptions {
   displayName?: string | null;
   description?: string | null;
   imessageEnabled?: boolean;
-  /** Enable Slack for this identity. Disabled by default; false pauses existing connections. */
-  slackEnabled?: boolean;
   /** Toggle automatic name and optional photo sharing for an attached dedicated iMessage line. */
   contactSharingEnabled?: boolean;
   /**
@@ -193,8 +189,6 @@ export interface AgentIdentitySummary {
    * may also carry an attached dedicated line.
    */
   imessageEnabled: boolean;
-  /** Whether this identity can connect to and use Slack workspaces. */
-  slackEnabled?: boolean;
   contactSharingEnabled: boolean;
   /** Whitelist/blacklist mode for this identity's iMessage contact rules. */
   imessageFilterMode: FilterMode;
@@ -298,7 +292,6 @@ export interface RawAgentIdentitySummary {
   description: string | null;
   email_address: string | null;
   imessage_enabled?: boolean;
-  slack_enabled?: boolean;
   contact_sharing_enabled?: boolean;
   imessage_filter_mode?: string | null;
   mail_filter_mode?: string | null;
@@ -385,7 +378,6 @@ export function parseAgentIdentitySummary(r: RawAgentIdentitySummary): AgentIden
     description: r.description ?? null,
     emailAddress: r.email_address,
     imessageEnabled: r.imessage_enabled ?? false,
-    slackEnabled: r.slack_enabled ?? false,
     contactSharingEnabled: r.contact_sharing_enabled ?? true,
     imessageFilterMode: (r.imessage_filter_mode as FilterMode) ?? FilterModeEnum.BLACKLIST,
     mailFilterMode: (r.mail_filter_mode as FilterMode) ?? FilterModeEnum.BLACKLIST,

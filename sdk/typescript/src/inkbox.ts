@@ -519,7 +519,6 @@ export class Inkbox {
     };
     if (options.displayName !== undefined) createArgs.displayName = options.displayName;
     if (options.description !== undefined) createArgs.description = options.description;
-    if (options.slackEnabled !== undefined) createArgs.slackEnabled = options.slackEnabled;
     if (options.imessageEnabled !== undefined) createArgs.imessageEnabled = options.imessageEnabled;
     if (options.contactSharingEnabled !== undefined) createArgs.contactSharingEnabled = options.contactSharingEnabled;
     if (options.claimIMessageNumber === true) {

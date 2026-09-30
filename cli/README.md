@@ -1143,15 +1143,9 @@ not send-outcome events. Native processing support depends on the workspace and 
 used as a fallback. Inspect capabilities for missing scopes before requesting an upgrade.
 Disconnect removes Inkbox authority, not the workspace's Slack app installation.
 
-Slack is disabled on newly created identities. Enable it before workspace installation.
-Disabling Slack preserves connections and history but stops channel activity;
-re-enabling resumes it without importing missed messages.
-
-```bash
-inkbox identity create support-agent --slack-enabled
-inkbox identity update support-agent --slack-enabled false
-inkbox identity update support-agent --slack-enabled true
-```
+Slack setup creates the identity’s app directly in its selected workspace.
+No identity toggle is required. Connection responses report app creation,
+preparation readiness, and installation status separately.
 
 Retained history is separate from live reads and webhook diagnostics. All observed
 messages in conversations the connection can access are captured automatically,

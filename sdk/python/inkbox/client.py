@@ -542,7 +542,6 @@ class Inkbox:
         display_name: str | None = None,
         description: Any = _UNSET,
         imessage_enabled: bool | None = None,
-        slack_enabled: bool = _UNSET,  # type: ignore[assignment]
         contact_sharing_enabled: bool | None = None,
         claim_imessage_number: Literal[True] | None = None,
         email_local_part: str | None = None,
@@ -569,7 +568,6 @@ class Inkbox:
                 server default. Never surfaces in outbound mail.
             imessage_enabled: Whether this identity can use iMessage.
                 Defaults server-side to ``False``; pass ``True`` to opt in.
-            slack_enabled: Enable Slack for this identity; disabled by default.
             contact_sharing_enabled: Whether an attached dedicated iMessage
                 line automatically shares the identity's name and optional avatar.
                 Defaults server-side to ``True``; pass ``False`` to opt out.
@@ -606,7 +604,6 @@ class Inkbox:
             display_name=display_name,
             description=description,
             imessage_enabled=imessage_enabled,
-            slack_enabled=slack_enabled,
             contact_sharing_enabled=contact_sharing_enabled,
             claim_imessage_number=claim_imessage_number,
             mailbox=mailbox,

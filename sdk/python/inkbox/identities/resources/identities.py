@@ -39,7 +39,6 @@ class IdentitiesResource:
         display_name: str | None = None,
         description: Any = _UNSET,
         imessage_enabled: bool | None = None,
-        slack_enabled: bool = _UNSET,  # type: ignore[assignment]
         contact_sharing_enabled: bool | None = None,
         claim_imessage_number: Literal[True] | None = None,
         mailbox: IdentityMailboxCreateOptions | None = None,
@@ -62,7 +61,6 @@ class IdentitiesResource:
                 to the server default.
             imessage_enabled: Whether the identity can use iMessage. Omit to
                 defer to the server default (``False``).
-            slack_enabled: Enable Slack for this identity; disabled by default.
             contact_sharing_enabled: Whether an attached dedicated iMessage
                 line automatically shares this identity's name and optional
                 avatar. Omit to defer to the server default (``True``).
@@ -85,10 +83,6 @@ class IdentitiesResource:
             body["display_name"] = display_name
         if description is not _UNSET:
             body["description"] = description
-        if slack_enabled is not _UNSET:
-            if not isinstance(slack_enabled, bool):
-                raise ValueError("slack_enabled must be a boolean")
-            body["slack_enabled"] = slack_enabled
         if imessage_enabled is not None:
             body["imessage_enabled"] = imessage_enabled
         if contact_sharing_enabled is not None:
@@ -133,7 +127,6 @@ class IdentitiesResource:
         display_name: Any = _UNSET,
         description: Any = _UNSET,
         imessage_enabled: bool | None = None,
-        slack_enabled: bool = _UNSET,  # type: ignore[assignment]
         contact_sharing_enabled: bool | None = None,
         imessage_number_id: UUID | str | None = _UNSET,  # type: ignore[assignment]
         claim_imessage_number: Literal[True] | None = None,
@@ -160,7 +153,6 @@ class IdentitiesResource:
             display_name: New display name, or ``None`` to clear.
             description: New description, or ``None`` to clear.
             imessage_enabled: Toggle iMessage reachability.
-            slack_enabled: Enable or pause Slack without deleting its connections.
             contact_sharing_enabled: Toggle automatic name and optional photo
                 sharing for an attached dedicated iMessage line.
             imessage_number_id: Attach an already-owned dedicated line by
@@ -191,10 +183,6 @@ class IdentitiesResource:
             body["display_name"] = display_name
         if description is not _UNSET:
             body["description"] = description
-        if slack_enabled is not _UNSET:
-            if not isinstance(slack_enabled, bool):
-                raise ValueError("slack_enabled must be a boolean")
-            body["slack_enabled"] = slack_enabled
         if imessage_enabled is not None:
             body["imessage_enabled"] = imessage_enabled
         if contact_sharing_enabled is not None:

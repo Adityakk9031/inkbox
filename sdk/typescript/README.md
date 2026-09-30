@@ -1963,7 +1963,6 @@ An identity app stays bound to its selected workspace.
 
 ```typescript
 const managementClient = new Inkbox({ apiKey: "YOUR_ORGANIZATION_MANAGEMENT_API_KEY" });
-// Enable Slack on this identity through organization management first.
 const workspace = await managementClient.slack.saveProvisioningWorkspace({
   accessToken: process.env.SLACK_CONFIGURATION_ACCESS_TOKEN!,
   refreshToken: process.env.SLACK_CONFIGURATION_REFRESH_TOKEN!,
@@ -2047,15 +2046,9 @@ not send-outcome events. Native processing support depends on the workspace and 
 used as a fallback. Inspect capabilities for missing scopes before requesting an upgrade.
 Disconnect removes Inkbox authority, not the workspace's Slack app installation.
 
-Slack is disabled on newly created identities. Enable it before workspace installation.
-Disabling Slack preserves connections and history but stops channel activity;
-re-enabling resumes it without importing missed messages.
-
-```typescript
-const identity = await inkbox.createIdentity("support-agent", { slackEnabled: true });
-await identity.update({ slackEnabled: false }); // Pause without disconnecting workspaces.
-await identity.update({ slackEnabled: true });  // Resume Slack.
-```
+Slack setup creates the identity’s app directly in its selected workspace.
+No identity toggle is required. Connection responses report app creation,
+preparation readiness, and installation status separately.
 
 Retained history is separate from live reads and webhook diagnostics. All observed
 messages in conversations the connection can access are captured automatically,

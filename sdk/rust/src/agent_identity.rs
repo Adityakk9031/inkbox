@@ -30,7 +30,7 @@
 //! `&self` while still refreshing the cached channels (`_data`, `_phone_number`)
 //! exactly as the Python mutates instance attributes.
 
-use std::cell::{Cell, RefCell};
+use std::cell::RefCell;
 use std::sync::Arc;
 
 use uuid::Uuid;
@@ -82,7 +82,6 @@ pub struct AgentIdentity {
     /// Latest identity payload (handle, display name, channels). Mutated on
     /// `update` / `refresh`, mirroring the Python `self._data`.
     data: RefCell<AgentIdentityData>,
-    slack_enabled: Cell<bool>,
     /// Back-reference to the owning client.
     inkbox: Arc<Inkbox>,
     /// Cached mailbox channel.
@@ -192,35 +191,20 @@ impl AgentIdentity {
     ) -> Result<crate::APIResponse<T>> {
         self.inkbox.with_response_metadata(|client| {
             let scoped = AgentIdentity::new(self.data.borrow().clone(), client.clone());
-            scoped.slack_enabled.set(self.slack_enabled.get());
             *scoped.mailbox.borrow_mut() = self.mailbox.borrow().clone();
             *scoped.phone_number.borrow_mut() = self.phone_number.borrow().clone();
             *scoped.tunnel.borrow_mut() = self.tunnel.borrow().clone();
             operation(&scoped)
         })
     }
-    /// Build a facade from a response that includes channel enablement settings.
-    pub fn new_with_channels(
-        data: crate::identities::ChannelAgentIdentityData,
-        inkbox: Arc<Inkbox>,
-    ) -> Self {
-        let enabled = data.slack_enabled;
-        let identity = Self::new(data.into_legacy(), inkbox);
-        identity.slack_enabled.set(enabled);
-        identity
-    }
-
-    /// Build a facade from a legacy identity payload and its owning client.
-    ///
-    /// This payload has no channel settings, so cached Slack enablement starts
-    /// false. Use `new_with_channels` or refresh before reading that setting.
+    /// Build a facade from an identity-create / identity-get payload and the
+    /// owning client. Mirrors the Python `AgentIdentity.__init__`.
     pub fn new(data: AgentIdentityData, inkbox: Arc<Inkbox>) -> Self {
         let mailbox = data.mailbox.clone();
         let phone_number = data.phone_number.clone();
         let tunnel = data.tunnel.clone();
         Self {
             data: RefCell::new(data),
-            slack_enabled: Cell::new(false),
             inkbox,
             mailbox: RefCell::new(mailbox),
             phone_number: RefCell::new(phone_number),
@@ -315,11 +299,6 @@ impl AgentIdentity {
     /// Whether this identity can be reached over iMessage.
     pub fn imessage_enabled(&self) -> bool {
         self.data.borrow().summary.imessage_enabled
-    }
-
-    /// Whether this identity can connect to and use Slack workspaces.
-    pub fn slack_enabled(&self) -> bool {
-        self.slack_enabled.get()
     }
 
     /// Whether an attached dedicated iMessage line automatically shares this profile.
@@ -1948,74 +1927,37 @@ impl AgentIdentity {
         claim_imessage_number: Option<bool>,
         idempotency_key: Option<&str>,
     ) -> Result<()> {
-        self.update_with_channels(
-            new_handle,
-            display_name,
-            description,
-            imessage_enabled,
-            contact_sharing_enabled,
-            imessage_filter_mode,
-            mail_filter_mode,
-            phone_filter_mode,
-            imessage_number_id,
-            claim_imessage_number,
-            idempotency_key,
-            None,
-        )
-    }
-
-    /// Configure identity profile and channels, including Slack enablement.
-    /// Slack defaults to disabled on create; omitted updates preserve its state.
-    #[allow(clippy::too_many_arguments)]
-    pub fn update_with_channels(
-        &self,
-        new_handle: Option<&str>,
-        display_name: Unset<String>,
-        description: Unset<String>,
-        imessage_enabled: Option<bool>,
-        contact_sharing_enabled: Option<bool>,
-        imessage_filter_mode: Option<&str>,
-        mail_filter_mode: Option<&str>,
-        phone_filter_mode: Option<&str>,
-        imessage_number_id: Unset<Uuid>,
-        claim_imessage_number: Option<bool>,
-        idempotency_key: Option<&str>,
-        slack_enabled: Option<bool>,
-    ) -> Result<()> {
-        let data = self.inkbox.identities().update_with_channels(
-            &self.agent_handle(),
-            new_handle,
-            display_name,
-            description,
-            imessage_enabled,
-            contact_sharing_enabled,
-            imessage_filter_mode,
-            mail_filter_mode,
-            phone_filter_mode,
-            imessage_number_id,
-            claim_imessage_number,
-            idempotency_key,
-            slack_enabled,
-        )?;
+        let data = self
+            .inkbox
+            .identities()
+            .update_with_contact_sharing_and_imessage_number(
+                &self.agent_handle(),
+                new_handle,
+                display_name,
+                description,
+                imessage_enabled,
+                contact_sharing_enabled,
+                imessage_filter_mode,
+                mail_filter_mode,
+                phone_filter_mode,
+                imessage_number_id,
+                claim_imessage_number,
+                idempotency_key,
+            )?;
         *self.mailbox.borrow_mut() = data.mailbox.clone();
         *self.phone_number.borrow_mut() = data.phone_number.clone();
         *self.tunnel.borrow_mut() = data.tunnel.clone();
-        self.slack_enabled.set(data.slack_enabled);
-        *self.data.borrow_mut() = data.into_legacy();
+        *self.data.borrow_mut() = data;
         Ok(())
     }
 
     /// Re-fetch this identity from the API and update cached channels.
     pub fn refresh(&self) -> Result<()> {
-        let data = self
-            .inkbox
-            .identities()
-            .get_with_channels(&self.agent_handle())?;
+        let data = self.inkbox.identities().get(&self.agent_handle())?;
         *self.mailbox.borrow_mut() = data.mailbox.clone();
         *self.phone_number.borrow_mut() = data.phone_number.clone();
         *self.tunnel.borrow_mut() = data.tunnel.clone();
-        self.slack_enabled.set(data.slack_enabled);
-        *self.data.borrow_mut() = data.into_legacy();
+        *self.data.borrow_mut() = data;
         Ok(())
     }
 

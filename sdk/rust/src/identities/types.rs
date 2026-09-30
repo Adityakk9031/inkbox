@@ -502,41 +502,6 @@ impl AgentIdentityData {
     }
 }
 
-/// Identity response with channel settings, without changing legacy struct literals.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ChannelAgentIdentityData {
-    #[serde(flatten)]
-    pub identity: AgentIdentityData,
-    #[serde(default)]
-    pub slack_enabled: bool,
-}
-
-impl ChannelAgentIdentityData {
-    pub(crate) fn from_value(value: Value) -> crate::error::Result<Self> {
-        let slack_enabled = value
-            .get("slack_enabled")
-            .cloned()
-            .map(serde_json::from_value)
-            .transpose()?
-            .unwrap_or(false);
-        Ok(Self {
-            identity: AgentIdentityData::from_value(value)?,
-            slack_enabled,
-        })
-    }
-
-    pub fn into_legacy(self) -> AgentIdentityData {
-        self.identity
-    }
-}
-
-impl std::ops::Deref for ChannelAgentIdentityData {
-    type Target = AgentIdentityData;
-    fn deref(&self) -> &Self::Target {
-        &self.identity
-    }
-}
-
 impl std::ops::Deref for AgentIdentityData {
     type Target = AgentIdentitySummary;
 

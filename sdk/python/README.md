@@ -1928,7 +1928,6 @@ import os
 import time
 
 management_client = Inkbox(api_key="YOUR_ORGANIZATION_MANAGEMENT_API_KEY")
-# Enable Slack on this identity through organization management first.
 workspace = management_client.slack.save_provisioning_workspace(
     access_token=os.environ["SLACK_CONFIGURATION_ACCESS_TOKEN"],
     refresh_token=os.environ["SLACK_CONFIGURATION_REFRESH_TOKEN"],
@@ -2011,15 +2010,9 @@ not send-outcome events. Native processing support depends on the workspace and 
 used as a fallback. Inspect capabilities for missing scopes before requesting an upgrade.
 Disconnect removes Inkbox authority, not the workspace's Slack app installation.
 
-Slack is disabled on newly created identities. Enable it before workspace installation.
-Disabling Slack preserves connections and history but stops channel activity;
-re-enabling resumes it without importing missed messages.
-
-```python
-identity = inkbox.create_identity("support-agent", slack_enabled=True)
-identity.update(slack_enabled=False)  # Pause Slack without disconnecting workspaces.
-identity.update(slack_enabled=True)   # Resume Slack.
-```
+Slack setup creates the identity’s app directly in its selected workspace.
+No identity toggle is required. Connection responses report app creation,
+preparation readiness, and installation status separately.
 
 Retained history is separate from live reads and webhook diagnostics. All observed
 messages in conversations the connection can access are captured automatically,

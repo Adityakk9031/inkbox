@@ -42,8 +42,8 @@ Versions move in lockstep across `@inkbox/sdk` (TypeScript), `inkbox`
   still return individual messages. Rust struct literals for
   `SlackArchiveMessagesOptions` need the new field or `..Default::default()`.
 
-- Add identity-level Slack enablement to creation, updates, and identity responses,
-  with matching SDK and CLI options. Existing calls leave the setting unchanged.
+- Prepare Slack apps directly for active identities without a separate identity
+  toggle. Connection responses report app creation and setup status.
 
 - Capture accessible observed Slack messages automatically. Retention remains configurable;
   deleting retained history does not stop new capture. Legacy disable/filter inputs fail explicitly.
