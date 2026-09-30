@@ -71,17 +71,11 @@ export interface SlackPermalinkResponse {
   permalink: string;
 }
 export interface SlackArchiveSettings {
-  captureEnabled: boolean;
   retentionDays: number | null;
-  conversationIds: string[];
   revision: number;
 }
 export interface SlackArchiveSettingsOptions {
-  /** @deprecated Capture is automatic; only true is accepted. */
-  captureEnabled?: boolean;
   retentionDays?: number | null;
-  /** @deprecated All accessible conversations are captured; only [] is accepted. */
-  conversationIds?: string[];
 }
 export interface SlackArchivedMessage {
   id: string;
@@ -191,9 +185,7 @@ const operation = (r: RawOperation): SlackOperation => ({
   agentStatus: r.agent_status ?? null,
 });
 const settings = (r: Wire<SlackArchiveSettings>): SlackArchiveSettings => ({
-  captureEnabled: r.capture_enabled,
   retentionDays: r.retention_days,
-  conversationIds: r.conversation_ids,
   revision: r.revision,
 });
 const archivedMessage = (
@@ -522,15 +514,9 @@ export class SlackOperationsResource {
     connectionId: string,
     options: SlackArchiveSettingsOptions = {},
   ): Promise<SlackArchiveSettings> {
-    if (options.captureEnabled !== undefined && options.captureEnabled !== true)
-      throw new Error("Slack message capture is always enabled");
-    if (options.conversationIds?.length)
-      throw new Error("Slack message capture includes all accessible conversations");
     return settings(
       await this.http.patch(`${base(connectionId)}/archive/settings`, {
-        capture_enabled: true,
         retention_days: options.retentionDays ?? null,
-        conversation_ids: options.conversationIds ?? [],
       }),
     );
   }
@@ -626,11 +612,10 @@ export class SlackOperationsResource {
   /** Organization management only; delete retained history without stopping new capture. */
   async purgeArchive(
     connectionId: string,
-  ): Promise<{ status: "pending"; captureEnabled: boolean }> {
+  ): Promise<{ status: "pending" }> {
     const r = await this.http.deleteWithResponse<{
       status: "pending";
-      capture_enabled: boolean;
     }>(`${base(connectionId)}/archive`);
-    return { status: r.status, captureEnabled: r.capture_enabled };
+    return { status: r.status };
   }
 }

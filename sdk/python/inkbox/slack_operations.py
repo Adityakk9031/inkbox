@@ -101,9 +101,7 @@ class SlackPermalinkResponse:
 
 @dataclass
 class SlackArchiveSettings:
-    capture_enabled: bool
     retention_days: int | None
-    conversation_ids: list[str]
     revision: int
 
 
@@ -161,7 +159,6 @@ class SlackArchiveCoverageResponse:
 @dataclass
 class SlackArchivePurgeResponse:
     status: str
-    capture_enabled: bool
 
 
 def _parse(cls, raw):
@@ -488,30 +485,19 @@ class SlackOperationsMixin:
         self,
         connection_id: UUID | str,
         *,
-        capture_enabled: bool = True,
         retention_days: int | None = None,
-        conversation_ids: list[str] | None = None,
     ) -> SlackArchiveSettings:
         """Organization management only; set message retention.
 
         Omitted retention resets to no time limit. All accessible observed messages
-        are captured automatically. Legacy capture arguments only accept True and
-        an omitted or empty conversation list.
+        are captured automatically.
         """
-        if capture_enabled is not True:
-            raise ValueError("Slack message capture is always enabled")
-        if conversation_ids:
-            raise ValueError("Slack message capture includes all accessible conversations")
         return _parse(
             SlackArchiveSettings,
             self._http.patch(
                 f"{_base(connection_id)}/archive/settings",
                 json={
-                    "capture_enabled": capture_enabled,
                     "retention_days": retention_days,
-                    "conversation_ids": conversation_ids
-                    if conversation_ids is not None
-                    else [],
                 },
             ),
         )

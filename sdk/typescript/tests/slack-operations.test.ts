@@ -108,33 +108,16 @@ function calls(s: Inkbox["slack"]): Record<string, () => Promise<unknown>> {
   };
 }
 afterEach(() => vi.unstubAllGlobals());
-it.each([{}, { captureEnabled: true, conversationIds: [] }])(
-  "sets retention without allowing capture restrictions: %j",
-  async (options) => {
-    const fetch = vi.fn<typeof globalThis.fetch>().mockResolvedValue(
-      new Response(JSON.stringify({
-        capture_enabled: true, conversation_ids: [], retention_days: 90, revision: 3,
-      })),
-    );
-    vi.stubGlobal("fetch", fetch);
-    const client = new Inkbox({ apiKey: "synthetic-test-key", baseUrl: "https://example.com" });
-    const result = await client.slack.updateArchiveSettings(C, { ...options, retentionDays: 90 });
-    expect(result).toMatchObject({ captureEnabled: true, retentionDays: 90 });
-    expect(JSON.parse(String(fetch.mock.calls[0][1]?.body))).toEqual({
-      capture_enabled: true, conversation_ids: [], retention_days: 90,
-    });
-  },
-);
-it.each([{ captureEnabled: false }, { conversationIds: ["C123"] }])(
-  "rejects capture restrictions before dispatch: %j",
-  async (options) => {
-    const fetch = vi.fn<typeof globalThis.fetch>();
-    vi.stubGlobal("fetch", fetch);
-    const client = new Inkbox({ apiKey: "synthetic-test-key", baseUrl: "https://example.com" });
-    await expect(client.slack.updateArchiveSettings(C, options)).rejects.toThrow("Slack message capture");
-    expect(fetch).not.toHaveBeenCalled();
-  },
-);
+it("sends only retention settings", async () => {
+  const fetch = vi.fn<typeof globalThis.fetch>().mockResolvedValue(
+    new Response(JSON.stringify({ retention_days: 90, revision: 3 })),
+  );
+  vi.stubGlobal("fetch", fetch);
+  const client = new Inkbox({ apiKey: "synthetic-test-key", baseUrl: "https://example.com" });
+  const result = await client.slack.updateArchiveSettings(C, { retentionDays: 90 });
+  expect(result).toEqual({ retentionDays: 90, revision: 3 });
+  expect(JSON.parse(String(fetch.mock.calls[0][1]?.body))).toEqual({ retention_days: 90 });
+});
 for (const testCase of data.cases) {
   it(`exact wire and typed response: ${testCase.name}`, async () => {
     const fetch = vi
@@ -167,7 +150,7 @@ for (const testCase of data.cases) {
         capabilities: { files_upload: { scopesSatisfied: false } },
       });
     if (testCase.name === "purge_archive")
-      expect(result).toMatchObject({ status: "pending", captureEnabled: true });
+      expect(result).toEqual({ status: "pending" });
     if (testCase.name.startsWith("search_messages"))
       expect(result).toMatchObject({
         source: "archive", nextCursor: testCase.response.next_cursor,

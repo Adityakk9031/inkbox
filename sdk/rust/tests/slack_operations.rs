@@ -286,7 +286,7 @@ fn identity_search_preserves_http_errors() {
 }
 
 #[test]
-fn retention_update_preserves_capture_and_rejects_restrictions_before_dispatch() {
+fn retention_update_sends_only_retention() {
     let server = MockServer::start();
     let client = Inkbox::builder("synthetic-test-key")
         .base_url(server.base_url())
@@ -296,35 +296,18 @@ fn retention_update_preserves_capture_and_rejects_restrictions_before_dispatch()
     let mock = server.mock(|when, then| {
         when.method(Method::PATCH)
             .path(format!("/api/v1/slack/connections/{id}/archive/settings"))
-            .json_body(json!({"capture_enabled":true,"conversation_ids":[],"retention_days":90}));
+            .json_body(json!({"retention_days":90}));
         then.status(200).json_body(json!({
-            "capture_enabled":true,"conversation_ids":[],"retention_days":90,"revision":3
+            "retention_days":90,"revision":3
         }));
     });
     let options = SlackArchiveSettingsOptions {
         retention_days: Some(90),
-        ..Default::default()
     };
     let result = client
         .slack()
         .update_archive_settings(id, &options)
         .unwrap();
-    assert!(result.capture_enabled);
     assert_eq!(result.retention_days, Some(90));
-    for invalid in [
-        SlackArchiveSettingsOptions {
-            capture_enabled: false,
-            ..options.clone()
-        },
-        SlackArchiveSettingsOptions {
-            conversation_ids: vec!["C123".into()],
-            ..options
-        },
-    ] {
-        assert!(matches!(
-            client.slack().update_archive_settings(id, &invalid),
-            Err(InkboxError::InvalidArgument(_))
-        ));
-    }
     mock.assert_hits(1);
 }

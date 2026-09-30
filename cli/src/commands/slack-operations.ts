@@ -1,6 +1,6 @@
 import { createReadStream } from "node:fs";
 import { basename } from "node:path";
-import { Command, InvalidArgumentError, Option } from "commander";
+import { Command, InvalidArgumentError } from "commander";
 import type { SlackProcessingStatus, SlackResource } from "@inkbox/sdk";
 import { createClient, getGlobalOpts } from "../client.js";
 import { output } from "../output.js";
@@ -24,9 +24,7 @@ interface Args {
   initialComment?: string;
   limit?: number;
   cursor?: string;
-  captureEnabled?: boolean;
   retentionDays?: number | "null";
-  captureConversationId?: string[];
   beforeTs?: string;
   afterTs?: string;
   q: string;
@@ -63,11 +61,6 @@ function action(
       output(await call(createClient(opts).slack, o), { json: !!opts.json });
     }),
   );
-}
-function boolean(value: string): boolean {
-  if (value !== "true" && value !== "false")
-    throw new InvalidArgumentError("Expected true or false");
-  return value === "true";
 }
 async function fileContent(path: string): Promise<string> {
   const chunks: Buffer[] = [];
@@ -258,26 +251,14 @@ export function registerSlackOperationCommands(
           "Organization management: set retention; messages are captured automatically",
         ),
     )
-      .addOption(
-        new Option("--capture-enabled <boolean>", "Deprecated; only true is accepted")
-          .argParser(boolean)
-          .hideHelp(),
-      )
       .option(
         "--retention-days <days|null>",
         "Retention limit; null or omission resets to no time limit",
         (v) => (v === "null" ? "null" : slackInteger(v)),
-      )
-      .addOption(
-        new Option("--capture-conversation-id <id>", "Deprecated; capture cannot be filtered")
-          .argParser((v: string, previous: string[] = []) => [...previous, v])
-          .hideHelp(),
       ),
     (s, o) =>
       s.updateArchiveSettings(o.connectionId, {
-        captureEnabled: o.captureEnabled,
         retentionDays: o.retentionDays === "null" ? null : o.retentionDays,
-        conversationIds: o.captureConversationId,
       }),
   );
   const filters = (c: Command): Command =>

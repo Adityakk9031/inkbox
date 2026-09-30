@@ -464,9 +464,7 @@
       "method": "GET",
       "path": "/slack/connections/11111111-1111-4111-8111-111111111111/archive/settings",
       "response": {
-        "capture_enabled": true,
         "retention_days": null,
-        "conversation_ids": [],
         "revision": 2
       },
       "body": null,
@@ -478,15 +476,11 @@
       "method": "PATCH",
       "path": "/slack/connections/11111111-1111-4111-8111-111111111111/archive/settings",
       "response": {
-        "capture_enabled": true,
         "retention_days": null,
-        "conversation_ids": [],
         "revision": 2
       },
       "body": {
-        "capture_enabled": true,
-        "retention_days": null,
-        "conversation_ids": []
+        "retention_days": null
       },
       "query": {},
       "idempotency_key": null
@@ -647,8 +641,7 @@
       "method": "DELETE",
       "path": "/slack/connections/11111111-1111-4111-8111-111111111111/archive",
       "response": {
-        "status": "pending",
-        "capture_enabled": true
+        "status": "pending"
       },
       "body": null,
       "query": {},

@@ -226,9 +226,7 @@ test("CLI exposes every new Slack operation with exact bytes, filters, keys and 
     assert.match(tooLarge.stderr, /10 MiB/);
     assert.equal(requests.length, data.cases.length);
     reply = {
-      capture_enabled: true,
       retention_days: null,
-      conversation_ids: [],
       revision: 2,
     };
     const defaults = await run([
@@ -237,20 +235,16 @@ test("CLI exposes every new Slack operation with exact bytes, filters, keys and 
       "settings",
       "update",
       ...conn,
-      "--capture-enabled",
-      "true",
     ]);
     assert.equal(defaults.error, null, defaults.stderr);
     assert.deepEqual(JSON.parse(requests.at(-1).body), {
-      capture_enabled: true,
       retention_days: null,
-      conversation_ids: [],
     });
     const requestCount = requests.length;
     for (const legacy of [["--capture-enabled", "false"], ["--capture-conversation-id", "C123"]]) {
       const rejected = await run([...globals, "archive", "settings", "update", ...conn, ...legacy]);
       assert.ok(rejected.error);
-      assert.match(rejected.stderr, /Slack message capture/);
+      assert.match(rejected.stderr, /unknown option/);
     }
     assert.equal(requests.length, requestCount);
     const help = await run([...globals, "archive", "settings", "update", "--help"]);

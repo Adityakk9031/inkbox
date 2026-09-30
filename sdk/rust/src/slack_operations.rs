@@ -111,27 +111,12 @@ pub struct SlackPermalinkResponse {
 }
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SlackArchiveSettings {
-    pub capture_enabled: bool,
     pub retention_days: Option<u32>,
-    pub conversation_ids: Vec<String>,
     pub revision: u32,
 }
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Default, Serialize)]
 pub struct SlackArchiveSettingsOptions {
-    /// Compatibility field. Capture is automatic; only true is accepted.
-    pub capture_enabled: bool,
     pub retention_days: Option<u32>,
-    /// Compatibility field. All accessible conversations are captured; must be empty.
-    pub conversation_ids: Vec<String>,
-}
-impl Default for SlackArchiveSettingsOptions {
-    fn default() -> Self {
-        Self {
-            capture_enabled: true,
-            retention_days: None,
-            conversation_ids: Vec::new(),
-        }
-    }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -257,7 +242,6 @@ pub struct SlackUploadFileOptions {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SlackArchivePurgeResponse {
     pub status: String,
-    pub capture_enabled: bool,
 }
 
 fn conversation(id: Uuid, channel: &str) -> String {
@@ -529,16 +513,6 @@ impl SlackResource {
         id: Uuid,
         options: &SlackArchiveSettingsOptions,
     ) -> Result<SlackArchiveSettings> {
-        if !options.capture_enabled {
-            return Err(InkboxError::InvalidArgument(
-                "Slack message capture is always enabled".into(),
-            ));
-        }
-        if !options.conversation_ids.is_empty() {
-            return Err(InkboxError::InvalidArgument(
-                "Slack message capture includes all accessible conversations".into(),
-            ));
-        }
         Ok(serde_json::from_value(self.http.patch(
             &format!("{}/archive/settings", base(id)),
             options,

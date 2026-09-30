@@ -46,7 +46,8 @@ Versions move in lockstep across `@inkbox/sdk` (TypeScript), `inkbox`
   toggle. Connection responses report app creation and setup status.
 
 - Capture accessible observed Slack messages automatically. Retention remains configurable;
-  deleting retained history does not stop new capture. Legacy disable/filter inputs fail explicitly.
+  deleting retained history does not stop new capture. Remove the unreleased capture toggle
+  and conversation-filter options from settings, responses, and CLI flags; settings now accept only retention.
 
 - Allow Slack events in mixed identity-owned subscriptions; preserve explicit
   identity scope, context settings, signing keys, and delivery authentication.
