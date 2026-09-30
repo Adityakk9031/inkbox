@@ -141,7 +141,7 @@ class SlackResource(SlackOperationsMixin):
     def save_provisioning_workspace(
         self, *, access_token: str, refresh_token: str
     ) -> SlackProvisioningWorkspace:
-        """Organization admins only. Verify and save app-configuration credentials."""
+        """Verify and save configuration credentials for your organization. Claimed agent keys are supported."""
         return _parse(SlackProvisioningWorkspace, self._http.post(
             "/slack/provisioning-workspaces",
             json={"access_token": access_token, "refresh_token": refresh_token},

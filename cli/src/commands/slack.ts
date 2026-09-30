@@ -88,7 +88,7 @@ export function registerSlackCommands(program: Command): void {
       output(await createClient(opts).slack.listProvisioningWorkspaces(), { json: !!opts.json });
     }));
   workspaces.command("save")
-    .description("Verify and save configuration credentials (organization admins only)")
+    .description("Verify and save configuration credentials for your organization")
     .requiredOption("--credentials-file <path>", "JSON file with access_token and refresh_token; use - for stdin")
     .action(withErrorHandler(async function (this: Command, o: { credentialsFile: string }) {
       const opts = getGlobalOpts(this);

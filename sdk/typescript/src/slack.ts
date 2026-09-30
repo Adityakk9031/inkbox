@@ -202,7 +202,7 @@ export class SlackResource extends SlackOperationsResource {
     );
     return r.workspaces.map(provisioningWorkspace);
   }
-  /** Organization admins only. Verify and save app-configuration credentials. */
+  /** Verify and save configuration credentials for your organization. Claimed agent keys are supported. */
   async saveProvisioningWorkspace(options: {
     accessToken: string;
     refreshToken: string;

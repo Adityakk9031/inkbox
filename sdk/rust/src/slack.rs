@@ -186,7 +186,7 @@ impl SlackResource {
             serde_json::from_value(self.http.get("/slack/provisioning-workspaces", NO_QUERY)?)?;
         Ok(response.workspaces)
     }
-    /// Organization admins only. Verify and save app-configuration credentials.
+    /// Verify and save configuration credentials for your organization. Claimed agent keys are supported.
     pub fn save_provisioning_workspace(
         &self,
         access_token: &str,
