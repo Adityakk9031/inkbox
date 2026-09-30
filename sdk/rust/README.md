@@ -1007,8 +1007,7 @@ messages in conversations the connection can access are captured automatically,
 independently of webhook subscriptions, with no time-based retention limit by default.
 This is not an automatic whole-workspace or historical copy. Organization management
 can set retention or delete retained history, but cannot disable or filter capture.
-Omitted retention resets to no time limit. Legacy capture arguments accept only
-`true` and an empty conversation list.
+Omitted retention resets to no time limit.
 Archive messages/search return retained records only. Backfill queues bounded imports
 and reports coverage; a completed channel page does not prove every thread is complete. `restart=true`
 restarts a completed/failed import. Purge deletes existing retained history without
