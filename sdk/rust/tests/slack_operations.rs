@@ -75,7 +75,6 @@ fn invoke(client: &Inkbox, name: &str, data: &Value) -> Value {
             c,
             &SlackArchiveSettingsOptions {
                 retention_days: None,
-                ..Default::default()
             }
         )),
         "list_conversation_previews" => v!(s.list_archived_messages(
