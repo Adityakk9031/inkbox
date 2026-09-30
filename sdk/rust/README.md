@@ -13,14 +13,14 @@ match the other SDKs exactly — they all speak to the same server.
 
 ```toml
 [dependencies]
-inkbox = "0.7.10"
+inkbox = "0.7.11"
 ```
 
 The tunnels data-plane runtime is behind an optional feature:
 
 ```toml
 [dependencies]
-inkbox = { version = "0.7.10", features = ["tunnels-runtime"] }
+inkbox = { version = "0.7.11", features = ["tunnels-runtime"] }
 ```
 
 ## Quickstart
@@ -902,9 +902,11 @@ let action = client.slack().send_message(connection.id, &SlackSendMessageOptions
 # Ok::<(), Box<dyn std::error::Error>>(())
 ```
 
-Onboarding is a separate organization-management task, not part of normal agent usage.
+Onboarding is separate from using an existing connection. Organization-member sessions,
+organization admin API keys, and claimed agent keys can save and list setup workspaces.
+Claimed agent keys can prepare and install their own identity’s app.
 `installation_available` reports installation availability; `setup.status` reports
-preparation readiness. Neither grants permission to manage setup. Save app-configuration credentials for
+preparation readiness. Save app-configuration credentials for
 the target workspace first; reuse that saved workspace for later identity apps.
 Credentials are write-only. The returned metadata identifies the verified workspace.
 An identity app stays bound to its selected workspace.
@@ -914,24 +916,24 @@ use inkbox::{Inkbox, SlackSetupState};
 use std::time::{Duration, Instant};
 use uuid::Uuid;
 
-let management_client = Inkbox::new("YOUR_ORGANIZATION_MANAGEMENT_API_KEY")?;
+let setup_client = Inkbox::new("YOUR_INKBOX_API_KEY")?;
 let identity_id = Uuid::parse_str("22222222-2222-4222-8222-222222222222")?;
-let workspace = management_client.slack().save_provisioning_workspace(
+let workspace = setup_client.slack().save_provisioning_workspace(
     &std::env::var("SLACK_CONFIGURATION_ACCESS_TOKEN")?,
     &std::env::var("SLACK_CONFIGURATION_REFRESH_TOKEN")?,
 )?;
 // For a workspace already saved, use list_provisioning_workspaces() and select its ID.
-let mut setup = management_client.slack().start_setup(identity_id, workspace.id)?;
+let mut setup = setup_client.slack().start_setup(identity_id, workspace.id)?;
 let deadline = Instant::now() + Duration::from_secs(120);
 while setup.status == SlackSetupState::Pending && Instant::now() < deadline {
     std::thread::sleep(Duration::from_secs(5));
-    setup = management_client.slack().list_connections(identity_id)?.setup
+    setup = setup_client.slack().list_connections(identity_id)?.setup
         .ok_or("Preparation status is unavailable; check again later")?;
 }
 if setup.status != SlackSetupState::Ready {
     return Err("Slack is not ready; check preparation status before continuing".into());
 }
-let installation = management_client.slack().start_installation(identity_id, None)?;
+let installation = setup_client.slack().start_installation(identity_id, None)?;
 // Open installation.authorization_url in a browser; keep it secret.
 # Ok::<(), Box<dyn std::error::Error>>(())
 ```
@@ -958,11 +960,12 @@ means terminal uncertainty, never an arbitrary unrecognized value.
 
 ### Slack behavior
 
-Organization management credentials save workspace configuration, prepare identity apps,
-start browser installations, and disconnect connections; claimed identity
-credentials can read and use their own connections. Installation availability does not
-mean preparation is complete or grant management permission; offer onboarding only
-in a management flow and check `setup.status` before continuing.
+Organization-member sessions and organization admin API keys can prepare and install
+apps for identities in their organization. Claimed agent keys can save workspace
+configuration and prepare, install, read, and use their own identity’s connections.
+Disconnecting connections, changing retention, and purging history require an
+organization-member session or organization admin API key. Installation availability
+does not mean preparation is complete; check `setup.status` before continuing.
 Direct installation is also supported: `start_installation` (Python/Rust),
 `startInstallation` (TypeScript), or `slack installation start` returns a short-lived
 opaque authorization URL to open in a browser. Treat it as a secret; the browser
@@ -983,6 +986,13 @@ messages accept 1..8 user IDs. Message text is 1..12000 characters; sends requir
 stable 1..128-character idempotency key using letters, digits, `.`, `_`, `:`, or `-`.
 Reuse a key only for the exact same operation. A different body with the same key is a
 conflict. Poll an action while it is `sending`; `sent` is not a delivered/read receipt.
+Recover a lost response without resending with `client.slack().get_action_by_key(connection_id, idempotency_key)`.
+A 404 lookup result does not prove that no send occurred; do not switch to a new key
+based on missing lookup data. A fresh `failed` / `rate_limited` send can include
+`retry_after` (`retryAfter` in TypeScript/CLI), the minimum wait in seconds before
+starting a deliberate new attempt. This hint is not retained on stored action reads
+or same-key replays. Reusing the original key returns its terminal action and does
+not send again. No automatic resend occurs.
 `unknown` is terminal uncertainty, not a promise of future reconciliation: do not
 blindly resend. Inspect authorized live history before deliberately starting a new
 operation. File downloads return bytes; unavailable or oversized files surface API

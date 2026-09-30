@@ -50,6 +50,8 @@ export interface SlackAction {
   messageTs: string | null;
   threadTs: string | null;
   errorCode: string | null;
+  /** Immediate rate-limit delay in seconds; absent from stored action reads. */
+  retryAfter: number | null;
 }
 export interface SlackConversationsResponse {
   conversations: Record<string, unknown>[];
@@ -121,6 +123,7 @@ interface RawAction {
   message_ts?: string | null;
   thread_ts?: string | null;
   error_code?: string | null;
+  retry_after?: number | null;
 }
 const connection = (r: RawConnection): SlackConnection => ({
   id: r.id,
@@ -150,6 +153,7 @@ const action = (r: RawAction): SlackAction => ({
   messageTs: r.message_ts ?? null,
   threadTs: r.thread_ts ?? null,
   errorCode: r.error_code ?? null,
+  retryAfter: r.retry_after ?? null,
 });
 const base = (id: string): string =>
   `/slack/connections/${encodeURIComponent(id)}`;
@@ -159,7 +163,8 @@ export class SlackResource extends SlackOperationsResource {
     super(http);
   }
   /**
-   * Organization management only. Open the short-lived opaque URL in a browser; do not log it.
+   * Claimed agent keys can install only their own identity.
+   * Open the short-lived opaque URL in a browser; do not log it.
    * returnUrl optionally selects an approved Console completion URL; omit it for the default page.
    */
   async startInstallation(
@@ -319,6 +324,17 @@ export class SlackResource extends SlackOperationsResource {
         `${base(connectionId)}/actions/${encodeURIComponent(actionId)}`,
       ),
     );
+  }
+  /** Read a send without resending; a 404 does not prove no send occurred. */
+  async getActionByKey(
+    connectionId: string,
+    idempotencyKey: string,
+  ): Promise<SlackAction> {
+    return action(await this.http.get(
+      `${base(connectionId)}/actions/by-key`,
+      undefined,
+      { headers: { "Idempotency-Key": idempotencyKey } },
+    ));
   }
   async getFile(connectionId: string, fileId: string): Promise<SlackFile> {
     return this.http.get(

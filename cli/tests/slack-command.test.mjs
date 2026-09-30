@@ -464,3 +464,48 @@ test("Slack provisioning credentials use stdin or a file without leaking errors"
     await new Promise((resolve) => server.close(resolve));
   }
 });
+
+test("Slack CLI exposes retry delay and recovers by key without sending again", async () => {
+  const requests = [];
+  const failed = { ...f.action, status: "failed", error_code: "rate_limited" };
+  let reply = { ...failed, retry_after: 73 };
+  let status = 200;
+  const server = http.createServer(async (req, res) => {
+    for await (const _chunk of req) { /* consume the request */ }
+    requests.push({ method: req.method, url: req.url, headers: req.headers });
+    res.writeHead(status, { "Content-Type": "application/json" });
+    res.end(JSON.stringify(reply));
+  });
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const globals = ["--api-key", "synthetic-test-key", "--base-url",
+    `http://127.0.0.1:${server.address().port}`, "--json"];
+  const connection = ["--connection-id", f.connection.id];
+  try {
+    const sent = await run([...globals, "slack", "message", "send", ...connection,
+      "--conversation-id", "CEXAMPLE", "--text", "Hello", "--idempotency-key", "original:1"]);
+    assert.equal(sent.error, null, sent.stderr);
+    assert.equal(JSON.parse(sent.stdout).retryAfter, 73);
+    assert.equal(requests.length, 1);
+    assert.equal(requests[0].method, "POST");
+    reply = failed;
+    const lookup = [...globals, "slack", "action", "get-by-key", ...connection,
+      "--idempotency-key", "original:1"];
+    const recovered = await run(lookup);
+    assert.equal(recovered.error, null, recovered.stderr);
+    assert.equal(JSON.parse(recovered.stdout).id, failed.id);
+    assert.equal(JSON.parse(recovered.stdout).retryAfter, null);
+    assert.equal(requests.length, 2);
+    assert.equal(requests[1].method, "GET");
+    assert.equal(requests[1].url, `/api/v1/slack/connections/${f.connection.id}/actions/by-key`);
+    assert.equal(requests[1].headers["idempotency-key"], "original:1");
+    reply = { detail: "Slack action not found" };
+    status = 404;
+    const missing = await run(lookup);
+    assert.notEqual(missing.error, null);
+    assert.equal(requests.length, 3);
+    assert.equal(requests[2].method, "GET");
+  } finally {
+    server.closeAllConnections();
+    await new Promise((resolve) => server.close(resolve));
+  }
+});

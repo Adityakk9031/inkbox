@@ -631,6 +631,8 @@ or `inkbox imessage get <message-id> --identity <handle>`.
 
 ## Slack workspace connections
 
+Slack SDK and CLI methods require version **0.7.11 or later**.
+
 Connect an existing Inkbox identity to your Slack workspace. The
 [Python SDK](sdk/python/README.md#slack), [TypeScript SDK](sdk/typescript/README.md#slack),
 [Rust SDK](sdk/rust/README.md#slack), and [CLI](cli/README.md#slack) support reusable organization-owned workspace setup
@@ -638,7 +640,9 @@ and direct browser handoffs, live conversations/history, durable message
 and utility actions, general file uploads/downloads, and identity-owned Slack
 webhooks with five selectable incoming-message events. Identity-wide message search spans workspace connections by default.
 Prepare the identity’s Slack app in a saved workspace before installing it;
-no identity toggle is required.
+no identity toggle is required. Organization-member sessions, organization admin API
+keys, and claimed agent keys can save setup workspaces; claimed agent keys prepare
+and install only their own identity’s app.
 Accessible observed messages are captured automatically, independently of webhook
 subscriptions. Searchable retained history, bounded imports, and coverage are separate
 from live reads. Retention has no time limit by default; organization management

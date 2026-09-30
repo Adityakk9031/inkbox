@@ -1053,8 +1053,10 @@ inkbox slack file download FEXAMPLE --connection-id 11111111-1111-4111-8111-1111
   --output example.bin
 ```
 
-Onboarding is a separate organization-management task. An organization admin saves
-both app-configuration tokens for the target workspace, then prepares the identity's app:
+Onboarding is separate from using an existing connection. Organization-member sessions,
+organization admin API keys, and claimed agent keys can save and list setup workspaces.
+Claimed agent keys can prepare and install only their own identity’s app. Save both
+app-configuration tokens for the target workspace, then prepare the identity’s app:
 
 ```bash
 # credentials.json contains access_token and refresh_token. Keep it private.
@@ -1071,7 +1073,7 @@ Use `--credentials-file -` to read JSON from stdin. Tokens are never returned.
 Reuse the saved workspace ID for subsequent identity apps. Each app is bound to
 its selected workspace. `needs_credentials` means its credentials need attention.
 
-Installation availability does not imply preparation is ready or grant management permission.
+Installation availability does not imply preparation is ready.
 `setup start`, `connection list`, and `installation start` accept exactly one of
 `-i/--identity <handle>` or `--identity-id <uuid>`. Handles use the existing identity
 lookup; the UUID form avoids that lookup.
@@ -1084,7 +1086,7 @@ lookup; the UUID form avoids that lookup.
 | `slack provisioning-workspace` | `list`, `save --credentials-file <path>` |
 | `slack conversation` | `list`, `get`, `open` (repeat `--user-id`) |
 | `slack message` | `list`, `send` |
-| `slack action` | `get <action-id>` |
+| `slack action` | `get <action-id>`, `get-by-key --idempotency-key <key>` |
 | `slack file` | `get <file-id>`, `download <file-id>` |
 
 All conversation/message/action/file operations require `--connection-id`.
@@ -1105,11 +1107,12 @@ the supplied event types replace the subscription's full event list.
 
 ### Slack behavior
 
-Organization management credentials prepare identity apps in saved workspaces,
-start installations, and disconnect connections; claimed identity
-credentials can read and use their own connections. Installation availability does not
-mean preparation is complete or grant management permission; offer onboarding only
-in a management flow and check `setup.status` before continuing.
+Organization-member sessions and organization admin API keys can prepare and install
+apps for identities in their organization. Claimed agent keys can save workspace
+configuration and prepare, install, read, and use their own identity’s connections.
+Disconnecting connections, changing retention, and purging history require an
+organization-member session or organization admin API key. Installation availability
+does not mean preparation is complete; check `setup.status` before continuing.
 Direct installation is also supported: `start_installation` (Python/Rust),
 `startInstallation` (TypeScript), or `slack installation start` returns a short-lived
 opaque authorization URL to open in a browser. Treat it as a secret; the browser
@@ -1130,6 +1133,13 @@ messages accept 1..8 user IDs. Message text is 1..12000 characters; sends requir
 stable 1..128-character idempotency key using letters, digits, `.`, `_`, `:`, or `-`.
 Reuse a key only for the exact same operation. A different body with the same key is a
 conflict. Poll an action while it is `sending`; `sent` is not a delivered/read receipt.
+Recover a lost response without resending with `inkbox slack action get-by-key --connection-id UUID --idempotency-key KEY`.
+A 404 lookup result does not prove that no send occurred; do not switch to a new key
+based on missing lookup data. A fresh `failed` / `rate_limited` send can include
+`retry_after` (`retryAfter` in TypeScript/CLI), the minimum wait in seconds before
+starting a deliberate new attempt. This hint is not retained on stored action reads
+or same-key replays. Reusing the original key returns its terminal action and does
+not send again. No automatic resend occurs.
 `unknown` is terminal uncertainty, not a promise of future reconciliation: do not
 blindly resend. Inspect authorized live history before deliberately starting a new
 operation. File downloads return bytes; unavailable or oversized files surface API

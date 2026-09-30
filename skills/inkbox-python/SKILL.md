@@ -1467,9 +1467,12 @@ result as proof that submitting a second message is safe.
 
 See the [Slack API and onboarding guide](https://github.com/inkbox-ai/inkbox/blob/main/sdk/python/README.md#slack) for implemented SDK/CLI methods.
 Use an existing identity. Select a workspace explicitly for live reads and mutations.
-Installation availability does not imply preparation is ready or grant management permission.
-Organization management must save both app-configuration tokens for the target workspace,
-then prepare the identity’s app using that saved provisioning-workspace UUID.
+Organization-member sessions, organization admin API keys, and claimed agent keys can
+save and list setup workspaces in their organization. Claimed agent keys can prepare
+and install only their own identity’s app; organization credentials can select an
+identity in their organization. Installation availability does not imply preparation
+is ready. Save both app-configuration tokens for the target workspace, then prepare
+the identity’s app using that saved provisioning-workspace UUID.
 Use `save_provisioning_workspace` / `saveProvisioningWorkspace` or CLI
 `slack provisioning-workspace save --credentials-file <path>` (use `-` for stdin).
 Reuse safe metadata from `list_provisioning_workspaces` / `listProvisioningWorkspaces`.
@@ -1489,7 +1492,14 @@ supported when the selected connection has access.
 Use explicit connection IDs and stable caller-provided idempotency keys for sends and
 utility mutations (reactions, pins, own-message edits/deletions, join/leave, uploads,
 and native processing status). Poll sends only while sending and operations only while
-in_progress. Unknown is terminal uncertainty and must not be blindly repeated. Send
+in_progress. Unknown is terminal uncertainty and must not be blindly repeated.
+Recover lost send responses with `get_action_by_key` / `getActionByKey` or CLI
+`slack action get-by-key --connection-id <uuid> --idempotency-key <key>`.
+A 404 does not prove no send occurred; never use missing lookup data to justify a
+new key. Fresh failed rate-limited sends may include `retry_after` / `retryAfter`
+seconds; honor that delay before a deliberate new attempt. Stored action reads and
+same-key replays do not retain this hint. A recorded terminal action is never resent
+by replaying its key. Send
 and utility keys use independent per-connection namespaces; utilities emit no outcome
 webhook, so read their status through operation lookup. Inspect
 capabilities for missing scopes; native processing support remains workspace-dependent.
@@ -1497,8 +1507,9 @@ General file uploads accept standard base64 for 1 byte..10 MiB (CLI: a local --f
 
 Retained history is separate from bounded live reads and webhook diagnostics. Capture
 is automatic for observed messages in accessible conversations, with no time-based
-retention limit. Organization management can set retention or purge retained history
-without stopping capture. Omitted retention resets to no time limit.
+retention limit. Organization-member sessions and organization admin API keys can
+disconnect connections, set retention, or purge retained history; claimed agent keys
+cannot. Purging history does not stop capture. Omitted retention resets to no time limit.
 For search, start with `client.slack.search_messages("release notes")` across the identity's workspace connections.
 Do not loop over connections or require a connection ID for a general search.
 Agent credentials infer the identity; other credentials require an explicit identity.

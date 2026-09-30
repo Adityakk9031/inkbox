@@ -2,7 +2,9 @@
 
 ## Unreleased
 
-See the [canonical SDK and CLI changelog](../CHANGELOG.md#unreleased) for the complete upcoming release.
+## 0.7.11 - Slack workspace connections (unreleased)
+
+See the [canonical SDK and CLI changelog](../CHANGELOG.md#0711---slack-workspace-connections-unreleased) for the complete upcoming release.
 
 ## 0.7.9 — Media WebSocket keypad guidance
 

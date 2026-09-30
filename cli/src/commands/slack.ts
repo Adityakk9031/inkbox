@@ -101,7 +101,7 @@ export function registerSlackCommands(program: Command): void {
     }));
   const setup = slack
     .command("setup")
-    .description("Organization management: prepare an identity's Slack app");
+    .description("Prepare a Slack app; claimed agent keys use their own identity");
   identity(setup.command("start"))
     .description("Start preparation without waiting; use connection list to check progress")
     .requiredOption("--provisioning-workspace-id <id>", "Saved provisioning workspace UUID")
@@ -180,7 +180,7 @@ export function registerSlackCommands(program: Command): void {
   );
   const installations = slack
     .command("installation")
-    .description("Organization management: browser installation handoff");
+    .description("Start browser installation; claimed agent keys use their own identity");
   identity(
     installations
       .command("start")
@@ -338,6 +338,18 @@ export function registerSlackCommands(program: Command): void {
       });
     }),
   );
+  connection(actions.command("get-by-key"))
+    .description("Read a send by its original key; not found does not mean safe to resend")
+    .requiredOption("--idempotency-key <key>", "Original send key")
+    .action(withErrorHandler(async function (
+      this: Command,
+      o: { connectionId: string; idempotencyKey: string },
+    ) {
+      const opts = getGlobalOpts(this);
+      output(await createClient(opts).slack.getActionByKey(o.connectionId, o.idempotencyKey), {
+        json: !!opts.json,
+      });
+    }));
   const files = slack
     .command("file")
     .description("Read authorized file metadata and download bytes");

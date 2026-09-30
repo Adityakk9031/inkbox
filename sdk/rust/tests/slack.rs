@@ -151,6 +151,7 @@ fn all_operations_and_binary_download_match_the_wire() {
         )
         .unwrap();
     assert_eq!(action.status, SlackActionStatus::Unknown);
+    assert_eq!(action.retry_after, None);
     send.assert_hits(1);
     let get_action = server.mock(|when, then| {
         when.method(GET)
@@ -176,6 +177,65 @@ fn all_operations_and_binary_download_match_the_wire() {
         vec![0, 255, 128, 1]
     );
     bytes.assert();
+}
+
+#[test]
+fn send_rate_limit_hint_and_read_only_key_recovery() {
+    let server = MockServer::start();
+    let f = fixture();
+    let c = id(f["connection"]["id"].as_str().unwrap());
+    let client = Inkbox::builder("synthetic-test-key")
+        .base_url(server.base_url())
+        .build()
+        .unwrap();
+    let mut failed = f["action"].clone();
+    failed["status"] = json!("failed");
+    failed["error_code"] = json!("rate_limited");
+    for delay in [Some(73), Some(0), None] {
+        let mut response = failed.clone();
+        response["retry_after"] = json!(delay);
+        let mut send = server.mock(|when, then| {
+            when.method(POST)
+                .path(format!("/api/v1/slack/connections/{c}/messages"))
+                .header("Idempotency-Key", "original:1");
+            then.status(200).json_body(response);
+        });
+        let action = client
+            .slack()
+            .send_message(
+                c,
+                &SlackSendMessageOptions {
+                    conversation_id: "CEXAMPLE".into(),
+                    text: "Hello".into(),
+                    idempotency_key: "original:1".into(),
+                    thread_ts: None,
+                },
+            )
+            .unwrap();
+        assert_eq!(action.status, SlackActionStatus::Failed);
+        assert_eq!(action.retry_after, delay);
+        send.assert_hits(1);
+        send.delete();
+    }
+    let mut lookup = server.mock(|when, then| {
+        when.method(GET)
+            .path(format!("/api/v1/slack/connections/{c}/actions/by-key"))
+            .header("Idempotency-Key", "original:1");
+        then.status(200).json_body(failed.clone());
+    });
+    let recovered = client.slack().get_action_by_key(c, "original:1").unwrap();
+    assert_eq!(recovered.id, id(failed["id"].as_str().unwrap()));
+    assert_eq!(recovered.retry_after, None);
+    lookup.assert_hits(1);
+    lookup.delete();
+    let missing = server.mock(|when, then| {
+        when.method(GET)
+            .path(format!("/api/v1/slack/connections/{c}/actions/by-key"));
+        then.status(404)
+            .json_body(json!({"detail": "Slack action not found"}));
+    });
+    assert!(client.slack().get_action_by_key(c, "original:1").is_err());
+    missing.assert_hits(1);
 }
 
 #[test]

@@ -64,6 +64,8 @@ class SlackInstallation:
 
 @dataclass
 class SlackAction:
+    """Send outcome; retry_after is an immediate, non-persisted rate-limit hint."""
+
     id: UUID
     connection_id: UUID
     status: Literal["sending", "sent", "failed", "unknown"]
@@ -71,6 +73,7 @@ class SlackAction:
     message_ts: str | None = None
     thread_ts: str | None = None
     error_code: str | None = None
+    retry_after: int | None = None
 
 
 @dataclass
@@ -165,7 +168,9 @@ class SlackResource(SlackOperationsMixin):
         workspace_id: str | None = None,
         return_url: str | None = None,
     ) -> SlackInstallation:
-        """Organization management only. Open the short-lived authorization URL in a browser; do not log it.
+        """Start installation; claimed agent keys can install only their own identity.
+
+        Open the short-lived authorization URL in a browser; do not log it.
 
         ``return_url`` optionally selects an approved Console completion URL.
         Omit it to use the default completion page.
@@ -266,6 +271,18 @@ class SlackResource(SlackOperationsMixin):
             SlackAction,
             self._http.get(
                 f"{_connection(connection_id)}/actions/{quote(str(action_id), safe='')}"
+            ),
+        )
+
+    def get_action_by_key(
+        self, connection_id: UUID | str, idempotency_key: str
+    ) -> SlackAction:
+        """Read a send without resending; a 404 does not prove no send occurred."""
+        return _parse(
+            SlackAction,
+            self._http.get(
+                f"{_connection(connection_id)}/actions/by-key",
+                headers={"Idempotency-Key": idempotency_key},
             ),
         )
 

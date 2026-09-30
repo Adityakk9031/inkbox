@@ -6,6 +6,19 @@ Versions move in lockstep across `@inkbox/sdk` (TypeScript), `inkbox`
 
 ## Unreleased
 
+## 0.7.11 - Slack workspace connections (unreleased)
+
+- Support setup and installation with claimed agent keys for their own identity;
+  clarify organization-member session and organization admin API-key permissions.
+- Expose immediate rate-limit guidance on Slack send results as `retry_after` /
+  `retryAfter`, without automatic retries. Stored action reads and same-key replays
+  do not retain this hint. Rust `SlackAction` literals need `retry_after: None`.
+- Recover Slack sends without resending using `get_action_by_key` /
+  `getActionByKey` or `slack action get-by-key`. A missing action does not prove
+  that no send occurred.
+- Prepare Python, TypeScript, Rust, CLI, and bundled Claude plugin version `0.7.11`,
+  with bundled Codex plugin version `0.1.10`.
+
 - Add organization-owned provisioning workspaces across Python, TypeScript, Rust, and CLI.
   Save both configuration tokens once and reuse verified workspace metadata. Credentials
   are write-only; CLI input uses a private JSON file or stdin.

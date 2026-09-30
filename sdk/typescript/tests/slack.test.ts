@@ -193,6 +193,38 @@ it("maps every Slack operation to exact wire requests and returns raw bytes", as
   ).toEqual(new Uint8Array([0, 255, 128, 1]));
   expect(fetch).toHaveBeenCalledTimes(12);
 });
+it.each([73, 0, null])("preserves immediate send retry delay %s and supports read-only recovery", async (retryAfter) => {
+  const c = client();
+  const { fetch, reply } = mock();
+  const failed = { ...fixture.action, status: "failed", error_code: "rate_limited" };
+  reply({ ...failed, retry_after: retryAfter });
+  const result = await c.slack.sendMessage(C, {
+    conversationId: "CEXAMPLE", text: "Hello", idempotencyKey: "original:1",
+  });
+  expect(result).toMatchObject({ status: "failed", retryAfter });
+  expect(fetch).toHaveBeenCalledTimes(1);
+  reply(failed);
+  expect(await c.slack.getActionByKey(C, "original:1")).toMatchObject({
+    id: result.id, retryAfter: null,
+  });
+  const [input, init] = fetch.mock.calls.at(-1)!;
+  const url = new URL(String(input));
+  expect(url.pathname).toBe(`/api/v1/slack/connections/${C}/actions/by-key`);
+  expect(url.search).toBe("");
+  expect(init?.method).toBe("GET");
+  expect(new Headers(init?.headers).get("Idempotency-Key")).toBe("original:1");
+  reply(failed);
+  expect((await c.slack.getAction(C, result.id)).retryAfter).toBeNull();
+  expect(fetch).toHaveBeenCalledTimes(3);
+});
+it("does not send when key lookup returns not found", async () => {
+  const { fetch, reply } = mock();
+  reply({ detail: "Slack action not found" }, 404);
+  await expect(client().slack.getActionByKey(C, "original:1"))
+    .rejects.toMatchObject({ statusCode: 404 });
+  expect(fetch).toHaveBeenCalledTimes(1);
+  expect(fetch.mock.calls[0][1]?.method).toBe("GET");
+});
 it.each([409, 429, 503])(
   "does not retry rejected or ambiguous send (%s)",
   async (status) => {

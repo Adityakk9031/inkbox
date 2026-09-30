@@ -157,6 +157,38 @@ def test_all_slack_operations_exact_wire(wire):
     assert len(requests) == 12
 
 
+@pytest.mark.parametrize("retry_after", [73, 0, None])
+def test_send_rate_limit_hint_and_read_only_key_recovery(wire, retry_after):
+    c, requests, replies = wire
+    failed = dict(DATA["action"], status="failed", error_code="rate_limited")
+    replies.extend([dict(failed, retry_after=retry_after), failed, failed])
+    result = c.slack.send_message(
+        C, conversation_id="CEXAMPLE", text="Hello", idempotency_key="original:1"
+    )
+    assert result.status == "failed"
+    assert result.retry_after == retry_after
+    assert len(requests) == 1
+    recovered = c.slack.get_action_by_key(C, "original:1")
+    assert recovered.id == result.id
+    assert recovered.retry_after is None
+    assert requests[-1].method == "GET"
+    assert requests[-1].url.path == f"/api/v1/slack/connections/{C}/actions/by-key"
+    assert not requests[-1].url.query
+    assert requests[-1].headers["Idempotency-Key"] == "original:1"
+    assert c.slack.get_action(C, result.id).retry_after is None
+    assert len(requests) == 3
+
+
+def test_missing_key_lookup_does_not_send(wire):
+    c, requests, replies = wire
+    replies.append((404, {"detail": "Slack action not found"}))
+    with pytest.raises(InkboxAPIError) as error:
+        c.slack.get_action_by_key(C, "original:1")
+    assert error.value.status_code == 404
+    assert len(requests) == 1
+    assert requests[0].method == "GET"
+
+
 @pytest.mark.parametrize("status", [409, 429, 503])
 def test_send_error_never_retried(wire, status):
     c, requests, replies = wire

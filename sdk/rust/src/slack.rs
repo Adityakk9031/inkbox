@@ -109,6 +109,9 @@ pub struct SlackAction {
     pub thread_ts: Option<String>,
     #[serde(default)]
     pub error_code: Option<String>,
+    /// Immediate rate-limit delay in seconds; absent from stored action reads.
+    #[serde(default)]
+    pub retry_after: Option<u32>,
 }
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SlackConversationsResponse {
@@ -210,7 +213,8 @@ impl SlackResource {
             NO_QUERY,
         )?)?)
     }
-    /// Open the short-lived opaque URL in a browser; do not log it. Organization management only.
+    /// Claimed agent keys can install only their own identity.
+    /// Open the short-lived opaque URL in a browser; do not log it.
     pub fn start_installation(
         &self,
         identity_id: Uuid,
@@ -220,7 +224,7 @@ impl SlackResource {
     }
     /// Start installation with an optional approved Console completion URL.
     /// None uses the default completion page. Open the returned opaque URL in a browser;
-    /// do not log it. Organization management only.
+    /// do not log it. Claimed agent keys can install only their own identity.
     pub fn start_installation_with_return_url(
         &self,
         identity_id: Uuid,
@@ -341,6 +345,18 @@ impl SlackResource {
         Ok(serde_json::from_value(self.http.get(
             &format!("{}/actions/{action_id}", base(connection_id)),
             NO_QUERY,
+        )?)?)
+    }
+    /// Read a send without resending; a 404 does not prove no send occurred.
+    pub fn get_action_by_key(
+        &self,
+        connection_id: Uuid,
+        idempotency_key: &str,
+    ) -> Result<SlackAction> {
+        Ok(serde_json::from_value(self.http.get_with_headers(
+            &format!("{}/actions/by-key", base(connection_id)),
+            NO_QUERY,
+            &[("Idempotency-Key", idempotency_key)],
         )?)?)
     }
     pub fn get_file(&self, connection_id: Uuid, file_id: &str) -> Result<SlackFile> {

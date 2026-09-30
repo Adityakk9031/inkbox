@@ -1954,32 +1954,34 @@ const action = await client.slack.sendMessage(connectionId, {
 const page = await client.slack.listMessages(connectionId, "CEXAMPLE");
 ```
 
-Onboarding is a separate organization-management task, not part of normal agent usage.
+Onboarding is separate from using an existing connection. Organization-member sessions,
+organization admin API keys, and claimed agent keys can save and list setup workspaces.
+Claimed agent keys can prepare and install their own identity’s app.
 `installationAvailable` reports installation availability; `setup.status` reports
-preparation readiness. Neither grants permission to manage setup. Save app-configuration credentials for
+preparation readiness. Save app-configuration credentials for
 the target workspace first; reuse that saved workspace for later identity apps.
 Credentials are write-only. The returned metadata identifies the verified workspace.
 An identity app stays bound to its selected workspace.
 
 ```typescript
-const managementClient = new Inkbox({ apiKey: "YOUR_ORGANIZATION_MANAGEMENT_API_KEY" });
-const workspace = await managementClient.slack.saveProvisioningWorkspace({
+const setupClient = new Inkbox({ apiKey: "YOUR_INKBOX_API_KEY" });
+const workspace = await setupClient.slack.saveProvisioningWorkspace({
   accessToken: process.env.SLACK_CONFIGURATION_ACCESS_TOKEN!,
   refreshToken: process.env.SLACK_CONFIGURATION_REFRESH_TOKEN!,
 });
 // For a workspace already saved, use listProvisioningWorkspaces() and select its ID.
-let setup = await managementClient.slack.startSetup(identityId, workspace.id);
+let setup = await setupClient.slack.startSetup(identityId, workspace.id);
 const deadline = Date.now() + 120_000;
 while (setup.status === "pending" && Date.now() < deadline) {
   await new Promise((resolve) => setTimeout(resolve, 5_000));
-  const current = (await managementClient.slack.listConnections(identityId)).setup;
+  const current = (await setupClient.slack.listConnections(identityId)).setup;
   if (!current) throw new Error("Preparation status is unavailable; check again later");
   setup = current;
 }
 if (setup.status !== "ready") {
   throw new Error(`Slack preparation is ${setup.status}; check its status before continuing`);
 }
-const installation = await managementClient.slack.startInstallation(identityId);
+const installation = await setupClient.slack.startInstallation(identityId);
 // Open installation.authorizationUrl in a browser; keep it secret.
 ```
 
@@ -2006,11 +2008,12 @@ await client.webhooks.subscriptions.update(subscription.id, {
 
 ### Slack behavior
 
-Organization management credentials save workspace configuration, prepare identity apps,
-start browser installations, and disconnect connections; claimed identity
-credentials can read and use their own connections. Installation availability does not
-mean preparation is complete or grant management permission; offer onboarding only
-in a management flow and check `setup.status` before continuing.
+Organization-member sessions and organization admin API keys can prepare and install
+apps for identities in their organization. Claimed agent keys can save workspace
+configuration and prepare, install, read, and use their own identity’s connections.
+Disconnecting connections, changing retention, and purging history require an
+organization-member session or organization admin API key. Installation availability
+does not mean preparation is complete; check `setup.status` before continuing.
 Direct installation is also supported: `start_installation` (Python/Rust),
 `startInstallation` (TypeScript), or `slack installation start` returns a short-lived
 opaque authorization URL to open in a browser. Treat it as a secret; the browser
@@ -2031,6 +2034,13 @@ messages accept 1..8 user IDs. Message text is 1..12000 characters; sends requir
 stable 1..128-character idempotency key using letters, digits, `.`, `_`, `:`, or `-`.
 Reuse a key only for the exact same operation. A different body with the same key is a
 conflict. Poll an action while it is `sending`; `sent` is not a delivered/read receipt.
+Recover a lost response without resending with `client.slack.getActionByKey(connectionId, idempotencyKey)`.
+A 404 lookup result does not prove that no send occurred; do not switch to a new key
+based on missing lookup data. A fresh `failed` / `rate_limited` send can include
+`retry_after` (`retryAfter` in TypeScript/CLI), the minimum wait in seconds before
+starting a deliberate new attempt. This hint is not retained on stored action reads
+or same-key replays. Reusing the original key returns its terminal action and does
+not send again. No automatic resend occurs.
 `unknown` is terminal uncertainty, not a promise of future reconciliation: do not
 blindly resend. Inspect authorized live history before deliberately starting a new
 operation. File downloads return bytes; unavailable or oversized files surface API
